@@ -4,6 +4,6 @@ export const userSavedBlogs = pgTable("user_saved_blogs", {
 	id: serial("id").primaryKey(),
 	userId: integer("user_id"),
 	blogId: integer("blog_id"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

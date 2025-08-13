@@ -9,6 +9,6 @@ export const exercises = pgTable("exercises", {
 	subject: text("subject"),
 	topic: text("topic"),
 	grade: integer("grade"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

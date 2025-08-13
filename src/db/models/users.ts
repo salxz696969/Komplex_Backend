@@ -10,6 +10,6 @@ export const users = pgTable("users", {
 	email: text("email"),
 	password: text("password"),
 	phone: text("phone"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

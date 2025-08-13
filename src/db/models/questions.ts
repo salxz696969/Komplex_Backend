@@ -8,6 +8,6 @@ export const questions = pgTable("questions", {
 	questionType: text("question_type"),
 	points: integer("points"),
 	imageUrl: text("image_url"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

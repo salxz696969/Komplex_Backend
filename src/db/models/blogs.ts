@@ -8,7 +8,7 @@ export const blogs = pgTable("blogs", {
 	type: text("type"),
 	topic: text("topic"),
 	viewCount: integer("view_count"),
-	likeCount: integer("like_count"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	likeCount: integer("like_amount"),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

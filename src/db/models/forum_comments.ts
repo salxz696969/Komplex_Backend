@@ -5,6 +5,6 @@ export const forumComments = pgTable("forum_comments", {
 	forumId: integer("forum_id"),
 	userId: integer("user_id"),
 	description: text("description"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

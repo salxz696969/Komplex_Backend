@@ -5,5 +5,6 @@ export const choices = pgTable("choices", {
 	questionId: integer("question_id"),
 	text: text("text"),
 	isCorrect: boolean("is_correct"),
-	createdAt: timestamp("created_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

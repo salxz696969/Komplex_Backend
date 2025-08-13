@@ -9,6 +9,6 @@ export const videos = pgTable("videos", {
 	videoUrl: text("video_url"),
 	thumbnailUrl: text("thumbnail_url"),
 	duration: integer("duration"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -4,6 +4,6 @@ export const followers = pgTable("followers", {
 	id: serial("id").primaryKey(),
 	userId: integer("user_id"),
 	followedId: integer("followed_id"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

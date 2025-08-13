@@ -5,6 +5,6 @@ export const forumReplyMedias = pgTable("forum_reply_medias", {
     forumReplyId: integer("forum_reply_id"),
     url: text("url"),
     mediaType: mediaTypeEnum("media_type"),
-    createdAt: timestamp("created_at", { mode: "date" }),
-    updatedAt: timestamp("updated_at", { mode: "date" })
+    createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

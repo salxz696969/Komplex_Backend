@@ -5,7 +5,7 @@ export const userVideoHistory = pgTable("user_video_history", {
 	userId: integer("user_id"),
 	videoId: integer("video_id"),
 	timeWatched: integer("time_watched"),
-	watchedAt: timestamp("watched_at", { mode: "date" }),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+	watchedAt: timestamp("watched_at").defaultNow(),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

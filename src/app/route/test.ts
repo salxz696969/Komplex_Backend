@@ -21,6 +21,10 @@ import { videoComments } from "../../db/models/video_comments";
 import { videoLikes } from "../../db/models/video_likes";
 import { videoReplies } from "../../db/models/video_replies";
 import { videos } from "../../db/models/videos";
+import { uploadToCloudinary } from "../../db/cloudinary/cloundinaryFunction";
+import { blogMedia } from "../../db/models/blog_media";
+import { mediaTypeEnum } from "../../db/schema";
+import { PgEnum } from "drizzle-orm/pg-core";
 const router = Router();
 
 // Add your route handlers here
@@ -49,6 +53,69 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 	} catch (err) {
 		res.status(500).json({ success: false, error: (err as Error).message });
 	}
+});
+router.post("/uploads", upload.any(), async (req, res) => {
+	try {
+		const userId = 1;
+		const { title, description, type, topic } = req.body;
+
+		let public_url: string | null = null;
+		let mediaType: "image" | "video" | null = null;
+
+		// Handle optional file upload
+		if (Array.isArray(req.files) && req.files.length > 0) {
+			const file = req.files[0];
+			console.log("File received:", file.originalname);
+
+			// Upload to Cloudinary
+			const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
+			// Type assertion to access secure_url
+			public_url = (result as { secure_url: string }).secure_url; // Use secure_url from Cloudinary
+			mediaType = file.mimetype.startsWith("video") ? "video" : "image";
+		}
+
+		// Insert blog into database
+		const newBlog = await db
+			.insert(blogs)
+			.values({
+				userId: Number(userId),
+				title,
+				description,
+				type,
+				topic,
+				viewCount: 0,
+				likeCount: 0,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.returning();
+
+		// Send response including uploaded file URL (if any)
+		res.status(201).json({
+			success: true,
+			blog: newBlog,
+			public_url,
+			mediaType,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ success: false, error: (err as Error).message });
+	}
+});
+
+router.get("/media", async (req, res) => {
+	const post = await db
+		.insert(blogMedia)
+		.values({
+			blogId: 1,
+			url: "https://res.cloudinary.com/dc5uhjhun/image/upload/v1755072063/my_app_uploads/smtmnrt9rp2kokpptg3h.png",
+			mediaType: "image",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		})
+		.returning();
+
+	res.json(post);
 });
 
 router.delete("/delete", async (req, res) => {

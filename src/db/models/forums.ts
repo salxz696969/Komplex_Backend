@@ -5,8 +5,8 @@ export const forums = pgTable("forums", {
 	title: text("title"),
 	description: text("description"),
 	viewCount: integer("view_count"),
-    type: text("type"),
-    topic: text("topic"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" })
+	type: text("type"),
+	topic: text("topic"),
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });

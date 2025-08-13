@@ -5,6 +5,6 @@ export const forumMedias = pgTable("forum_medias", {
 	forumId: integer("forum_id"),
 	url: text("url"),
 	mediaType: mediaTypeEnum("media_type"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" })
+	createdAt: timestamp("created_at").defaultNow(),
+	updatedAt: timestamp("updated_at").defaultNow(),
 });
