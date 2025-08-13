@@ -1,14 +1,21 @@
-import { pgTable, varchar, text, integer, timestamp, serial } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  varchar,
+  text,
+  integer,
+  timestamp,
+  serial,
+} from "drizzle-orm/pg-core";
 
 export const exercises = pgTable("exercises", {
-	id: serial("id").primaryKey(),
-	userId: integer("user_id"),
-	duration: integer("duration"),
-	title: text("title"),
-	description: text("description"),
-	subject: text("subject"),
-	topic: text("topic"),
-	grade: integer("grade"),
-	createdAt: timestamp("created_at", { mode: "date" }),
-	updatedAt: timestamp("updated_at", { mode: "date" }),
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  duration: integer("duration"),
+  title: text("title"),
+  description: text("description"),
+  subject: text("subject"),
+  topic: text("topic"),
+  grade: integer("grade"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
