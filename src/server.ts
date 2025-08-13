@@ -1,12 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import route from "./app/route/index";
+import routes from "./app/komplex/routes/index";
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use("/", route);
+app.use("/", routes);
 
 
 app.listen(process.env.PORT, () => {

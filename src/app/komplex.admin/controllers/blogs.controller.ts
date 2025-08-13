@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../db/cloudinary/cloundinaryFunction";
-import { db } from "../../db";
-import { blogs } from "../../db/schema";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
+import { db } from "../../../db";
+import { blogs } from "../../../db/schema";
 import { and, eq } from "drizzle-orm";
-import { blogMedias } from "../../db/models/blog_medias";
+import { blogMedias } from "../../../db/models/blog_medias";
 interface AuthenticatedRequest extends Request {
 	user?: {
 		userId: string;
