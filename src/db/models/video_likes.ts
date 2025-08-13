@@ -1,9 +1,9 @@
-import { pgTable, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, serial, integer } from "drizzle-orm/pg-core";
 
-export const video_likes = pgTable("video_likes", {
-	id: varchar("id", { length: 36 }).primaryKey(),
-	video_id: varchar("video_id", { length: 36 }),
-	user_id: varchar("user_id", { length: 36 }),
-	created_at: timestamp("created_at", { mode: "date" }),
-	updated_at: timestamp("updated_at", { mode: "date" }),
+export const videoLikes = pgTable("video_likes", {
+	id: serial("id").primaryKey(),
+	videoId: integer("video_id"),
+	userId: serial("user_id"),
+	createdAt: timestamp("created_at", { mode: "date" }),
+	updatedAt: timestamp("updated_at", { mode: "date" }),
 });

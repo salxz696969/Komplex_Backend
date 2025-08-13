@@ -1,12 +1,12 @@
-import { pgTable, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, timestamp, serial } from "drizzle-orm/pg-core";
 
-export const user_exercise_history = pgTable("user_exercise_history", {
-	id: varchar("id", { length: 36 }).primaryKey(),
-	user_id: varchar("user_id", { length: 36 }),
-	exercise_id: varchar("exercise_id", { length: 36 }),
+export const userExerciseHistory = pgTable("user_exercise_history", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id"),
+	exerciseId: integer("exercise_id"),
 	score: integer("score"),
-	time_taken: integer("time_taken"),
-	completed_at: timestamp("completed_at", { mode: "date" }),
-	created_at: timestamp("created_at", { mode: "date" }),
-	updated_at: timestamp("updated_at", { mode: "date" }),
+	timeTaken: integer("time_taken"),
+	completedAt: timestamp("completed_at", { mode: "date" }),
+	createdAt: timestamp("created_at", { mode: "date" }),
+	updatedAt: timestamp("updated_at", { mode: "date" }),
 });

@@ -1,9 +1,9 @@
-import { pgTable, varchar, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
 
 export const choices = pgTable("choices", {
-	id: varchar("id", { length: 36 }).primaryKey(),
-	question_id: varchar("question_id", { length: 36 }),
+	id: serial("id").primaryKey(),
+	questionId: integer("question_id"),
 	text: text("text"),
-	is_correct: boolean("is_correct"),
-	created_at: timestamp("created_at", { mode: "date" }),
+	isCorrect: boolean("is_correct"),
+	createdAt: timestamp("created_at", { mode: "date" }),
 });

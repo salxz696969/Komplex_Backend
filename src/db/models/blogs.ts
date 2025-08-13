@@ -1,12 +1,14 @@
-import { pgTable, varchar, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, integer, timestamp } from "drizzle-orm/pg-core";
 
 export const blogs = pgTable("blogs", {
-	id: varchar("id", { length: 36 }).primaryKey(),
-	user_id: varchar("user_id", { length: 36 }),
+	id: serial("id").primaryKey(),
+	userId: integer("user_id"),
 	title: text("title"),
 	description: text("description"),
-	image_url: text("image_url"),
-	view_count: integer("view_count"),
-	created_at: timestamp("created_at", { mode: "date" }),
-	updated_at: timestamp("updated_at", { mode: "date" }),
+	type: text("type"),
+	topic: text("topic"),
+	viewCount: integer("view_count"),
+	likeCount: integer("like_count"),
+	createdAt: timestamp("created_at", { mode: "date" }),
+	updatedAt: timestamp("updated_at", { mode: "date" }),
 });

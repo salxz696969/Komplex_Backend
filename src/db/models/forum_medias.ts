@@ -1,11 +1,10 @@
-import { pgTable, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { mediaTypeEnum } from "./media_type";
-
-export const forum_medias = pgTable("forum_medias", {
-	id: varchar("id", { length: 36 }).primaryKey(),
-	forum_id: varchar("forum_id", { length: 36 }),
+export const forumMedias = pgTable("forum_medias", {
+	id: serial("id").primaryKey(),
+	forumId: integer("forum_id"),
 	url: text("url"),
-	media_type: mediaTypeEnum("media_type"),
-	created_at: timestamp("created_at", { mode: "date" }),
-	updated_at: timestamp("updated_at", { mode: "date" }),
+	mediaType: mediaTypeEnum("media_type"),
+	createdAt: timestamp("created_at", { mode: "date" }),
+	updatedAt: timestamp("updated_at", { mode: "date" })
 });
