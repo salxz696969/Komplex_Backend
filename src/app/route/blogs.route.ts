@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { postBlog, getAllBlogs, getBlogById, likeBlog, updateBlog, deleteBlog } from "../controller/blogs.controller";
+import {
+	postBlog,
+	getAllBlogs,
+	getBlogById,
+	saveBlog,
+	updateBlog,
+	deleteBlog,
+	unsaveBlog,
+} from "../controller/blogs.controller";
 import upload from "../middleware/upload";
 const router = Router();
 
@@ -12,11 +20,12 @@ router.get("/:id", getBlogById);
 // Create a new blog
 router.post("/", upload.any(), postBlog);
 
-// Like a blog
-router.post("/like", likeBlog);
+// Save a blog
+router.post("/save/:id", saveBlog);
+router.delete("/unsave/:id", unsaveBlog);
 
 // Update a blog
-router.put("/:id", updateBlog);
+router.patch("/:id", upload.any(), updateBlog);
 
 // Delete a blog
 router.delete("/:id", deleteBlog);
