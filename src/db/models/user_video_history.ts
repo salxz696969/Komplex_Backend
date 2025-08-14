@@ -8,4 +8,9 @@ export const userVideoHistory = pgTable("user_video_history", {
 	watchedAt: timestamp("watched_at").defaultNow(),
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+		uniqueKeys: {
+			uniqueUserVideo: [table.userId, table.videoId],
+		},
+	})
+);

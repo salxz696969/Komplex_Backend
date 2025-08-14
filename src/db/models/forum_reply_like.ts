@@ -1,3 +1,4 @@
+import { table } from "console";
 import { pgTable, serial, integer, timestamp } from "drizzle-orm/pg-core";
 
 export const forumReplyLikes = pgTable("forum_reply_likes", {
@@ -6,4 +7,9 @@ export const forumReplyLikes = pgTable("forum_reply_likes", {
     userId: integer("user_id"),
     createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+		uniqueKeys: {
+			uniqueForumReplyUser: [table.forumReplyId, table.userId],
+		},
+	})
+);

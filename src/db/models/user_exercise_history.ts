@@ -1,3 +1,4 @@
+import { table } from "console";
 import { pgTable, varchar, integer, timestamp, serial } from "drizzle-orm/pg-core";
 
 export const userExerciseHistory = pgTable("user_exercise_history", {
@@ -9,4 +10,9 @@ export const userExerciseHistory = pgTable("user_exercise_history", {
 	completedAt: timestamp("completed_at").defaultNow(),
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+		uniqueKeys: {
+			uniqueUserExercise: [table.userId, table.exerciseId],
+		},
+	})
+);

@@ -6,4 +6,9 @@ export const forumCommentLikes = pgTable("forum_comment_likes", {
     userId: integer("user_id"),
     createdAt: timestamp("created_at", { mode: "date" }),
     updatedAt: timestamp("updated_at", { mode: "date" }),
-});
+}, (table) => ({
+		uniqueKeys: {
+			uniqueForumCommentUser: [table.forumCommentId, table.userId],
+		},
+	})
+);
