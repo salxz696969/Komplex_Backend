@@ -1,8 +1,9 @@
 import { pgTable, varchar, text, integer, timestamp, serial } from "drizzle-orm/pg-core";
+import { users } from "../schema";
 
 export const videos = pgTable("videos", {
 	id: serial("id").primaryKey(),
-	userId: integer("user_id"),
+	userId: integer("user_id").references(() => users.id),
 	title: text("title"),
 	description: text("description"),
 	viewCount: integer("view_count"),

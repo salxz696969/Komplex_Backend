@@ -1,8 +1,9 @@
 import { pgTable, varchar, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
+import { questions } from "../schema";
 
 export const choices = pgTable("choices", {
 	id: serial("id").primaryKey(),
-	questionId: integer("question_id"),
+	questionId: integer("question_id").references(() => questions.id),
 	text: text("text"),
 	isCorrect: boolean("is_correct"),
 	createdAt: timestamp("created_at").defaultNow(),
