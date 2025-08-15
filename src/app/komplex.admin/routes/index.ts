@@ -21,9 +21,11 @@ import videoRepliesRouter from "./video_replies.route";
 import videosRouter from "./videos.route";
 import gradesRouter from "./grades.route";
 import subjectsRouter from "./subjects.route";
+import databaseRouter from "./database.route";
 
 const adminRoutes = Router();
-
+// should have /database but let it be like this for now
+adminRoutes.use("/database", databaseRouter);
 adminRoutes.use("/blogs", blogsRouter);
 adminRoutes.use("/choices", choicesRouter);
 adminRoutes.use("/exercises", exercisesRouter);
