@@ -6,7 +6,7 @@ import {
 import { db } from "../../../db";
 import { blogs, users } from "../../../db/schema";
 import { and, eq } from "drizzle-orm";
-import { blogMedias } from "../../../db/models/blog_medias";
+import { blogMedias } from "../../../db/models/blog_media";
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
