@@ -8,25 +8,56 @@ import {
 } from "../../../db/schema";
 
 import { Request, Response } from "express";
+import { and, sql } from "drizzle-orm";
 
 export const getExercises = async (req: Request, res: Response) => {
   try {
-    const { all, grade, subject } = req.query;
-    if (all || (!grade && !subject)) {
-      const result = await db.select().from(exercises);
-      res.status(200).json(result);
-    } else if (grade && subject) {
-      const result = await db
-        .select()
-        .from(exercises)
+    const { grade, subject } = req.query;
+
+    // Build the base query
+    let baseQuery = db
+      .select({
+        // Basic exercise info
+        id: exercises.id,
+        topic: exercises.topic,
+        duration: exercises.duration,
+        subject: exercises.subject,
+        grade: exercises.grade,
+        createdAt: exercises.createdAt,
+        // Counts and stats
+        questionCount: sql<number>`COUNT(DISTINCT ${questions.id})`,
+        attemptCount: sql<number>`COUNT(DISTINCT ${userExerciseHistory.id})`,
+        averageScore: sql<number>`AVG(${userExerciseHistory.score})`,
+      })
+      .from(exercises)
+      .leftJoin(questions, eq(exercises.id, questions.exerciseId))
+      .leftJoin(
+        userExerciseHistory,
+        eq(exercises.id, userExerciseHistory.exerciseId)
+      );
+
+    // Execute query with or without filters
+    let result;
+    if (grade && subject) {
+      result = await baseQuery
         .where(
-          eq(exercises.grade, parseInt(grade as string)) &&
+          and(
+            eq(exercises.grade, parseInt(grade as string)),
             eq(exercises.subject, subject as string)
-        );
-      res.status(200).json(result);
+          )
+        )
+        .groupBy(exercises.id);
+    } else {
+      result = await baseQuery.groupBy(exercises.id);
     }
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error" + error });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error("Get exercises error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
