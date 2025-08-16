@@ -5,6 +5,7 @@ export const forumCommentMedias = pgTable("forum_comment_medias", {
     id: serial("id").primaryKey(),
     forumCommentId: integer("forum_comment_id").references(() => forumComments.id),
     url: text("url"),
+    urlForDeletion: text("url_for_deletion"),
     mediaType: mediaTypeEnum("media_type"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow()

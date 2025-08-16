@@ -87,7 +87,6 @@ export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
 			}
 		}
 
-		console.error(error);
 		return res.status(500).json({ success: false, error: (error as Error).message });
 	}
 };
@@ -114,7 +113,7 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 				updatedAt: blogs.updatedAt,
 				mediaUrl: blogMedia.url,
 				mediaType: blogMedia.mediaType,
-				userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
 				isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
 			})
 			.from(blogs)
@@ -140,7 +139,7 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 						likeCount: blog.likeCount,
 						createdAt: blog.createdAt,
 						updatedAt: blog.updatedAt,
-						userName: blog.userName,
+						username: blog.username,
 						isSave: !!blog.isSave,
 						media: [] as { url: string; type: string }[],
 					};
@@ -184,7 +183,7 @@ export const getBlogById = async (req: Request, res: Response) => {
 				updatedAt: blogs.updatedAt,
 				mediaUrl: blogMedia.url,
 				mediaType: blogMedia.mediaType,
-				userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
 				isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
 			})
 			.from(blogs)
@@ -217,7 +216,7 @@ export const getBlogById = async (req: Request, res: Response) => {
 			likeCount: blog[0].likeCount,
 			createdAt: blog[0].createdAt,
 			updatedAt: new Date(),
-			userName: blog[0].userName,
+			username: blog[0].username,
 			isSave: !!blog[0].isSave,
 			media: blog
 				.filter((b) => b.mediaUrl)
@@ -355,21 +354,20 @@ export const updateBlog = async (req: AuthenticatedRequest, res: Response) => {
 
 		let newBlogMedia = null;
 		if (secure_url.length > 0) {
-  newBlogMedia = await db
-    .insert(blogMedia)
-    .values(
-      secure_url.map((url, index) => ({
-        blogId: Number(id),
-        url,
-        urlForDeletion: public_id[index], // <-- use the correct column name
-        mediaType: mediaType[index],      // <-- also make sure this matches the table
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }))
-    )
-    .returning();
-}
-
+			newBlogMedia = await db
+				.insert(blogMedia)
+				.values(
+					secure_url.map((url, index) => ({
+						blogId: Number(id),
+						url,
+						urlForDeletion: public_id[index], // <-- use the correct column name
+						mediaType: mediaType[index], // <-- also make sure this matches the table
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}))
+				)
+				.returning();
+		}
 
 		const updateBlog = await db
 			.update(blogs)
