@@ -19,7 +19,6 @@ import videoCommentsRouter from "./video_comments.route";
 import videoLikesRouter from "./video_likes.route";
 import videoRepliesRouter from "./video_replies.route";
 import videosRouter from "./videos.route";
-import testRouter from "./test";
 import userContentRouter from "./user-content.route";
 
 const router = Router();
@@ -44,7 +43,6 @@ router.use("/video_comments", videoCommentsRouter);
 router.use("/video_likes", videoLikesRouter);
 router.use("/video_replies", videoRepliesRouter);
 router.use("/videos", videosRouter);
-router.use("/test", testRouter);
 router.use("/user-content", userContentRouter);
 
 export default router;

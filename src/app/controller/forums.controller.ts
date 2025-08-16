@@ -5,6 +5,8 @@ import { Request, Response } from "express";
 import { deleteFromCloudinary, uploadToCloudinary } from "../../db/cloudinary/cloundinaryFunction";
 import { forumCommentMedias } from "../../db/models/forum_comment_media";
 import { forumReplyMedias } from "../../db/models/forum_reply_media";
+import { deleteReply } from "./forum_replies.controller";
+import { deleteComment } from "./forum_comments.controller";
 
 interface AuthenticatedRequest extends Request {
 	user?: {
@@ -21,15 +23,51 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 		if (type) conditions.push(eq(forums.type, type as string));
 		if (topic) conditions.push(eq(forums.topic, topic as string));
 
-		const forum =
-			conditions.length > 0
-				? await db
-						.select()
-						.from(forums)
-						.where(and(...conditions))
-				: await db.select().from(forums);
+		const forumRecords = await db
+			.select({
+				id: forums.id,
+				userId: forums.userId,
+				title: forums.title,
+				description: forums.description,
+				type: forums.type,
+				topic: forums.topic,
+				viewCount: forums.viewCount,
+				createdAt: forums.createdAt,
+				updatedAt: forums.updatedAt,
+				mediaUrl: forumMedias.url,
+				mediaType: forumMedias.mediaType,
+			})
+			.from(forums)
+			.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
+			.where(conditions.length > 0 ? and(...conditions) : undefined);
 
-		return res.json(forum).status(200);
+		const forumsWithMedia = Object.values(
+			forumRecords.reduce((acc, forum) => {
+				if (!acc[forum.id]) {
+					acc[forum.id] = {
+						id: forum.id,
+						userId: forum.userId,
+						title: forum.title,
+						description: forum.description,
+						type: forum.type,
+						topic: forum.topic,
+						viewCount: forum.viewCount,
+						createdAt: forum.createdAt,
+						updatedAt: forum.updatedAt,
+						media: [] as { url: string; type: string }[],
+					};
+				}
+				if (forum.mediaUrl) {
+					acc[forum.id].media.push({
+						url: forum.mediaUrl,
+						type: forum.mediaType,
+					});
+				}
+				return acc;
+			}, {} as Record<number, any>)
+		);
+
+		return res.status(200).json({ forumsWithMedia });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -42,22 +80,35 @@ export const getForumById = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params;
 
-		const forum = await db
+		const forumFromDb = await db
 			.select()
 			.from(forums)
 			.where(eq(forums.id, Number(id)))
 			.limit(1);
 
-		if (!forum || forum.length === 0 || !forum[0]) {
+		if (!forumFromDb || forumFromDb.length === 0 || !forumFromDb[0]) {
 			return res.status(404).json({ success: false, message: "Forum not found" });
-		} else {
+		}
+
+		if (forumFromDb && forumFromDb.length > 0 && forumFromDb[0]) {
 			await db
 				.update(forums)
-				.set({ viewCount: (forum[0]?.viewCount ?? 0) + 1, updatedAt: new Date() })
+				.set({ viewCount: (forumFromDb[0]?.viewCount ?? 0) + 1, updatedAt: new Date() })
 				.where(eq(forums.id, Number(id)))
 				.returning();
 		}
-		return res.json(forum).status(200);
+
+		const forumWithMedia = await Promise.all(
+			forumFromDb.map(async (forum) => {
+				const media = await db.select().from(forumMedias).where(eq(forumMedias.forumId, forum.id));
+				return {
+					...forum,
+					media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
+				};
+			})
+		);
+
+		return res.json(forumWithMedia).status(200);
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -67,87 +118,97 @@ export const getForumById = async (req: Request, res: Response) => {
 };
 
 export const postForum = async (req: AuthenticatedRequest, res: Response) => {
+	let public_url: string[] = [];
+	let mediaType: ("image" | "video")[] = [];
+
 	try {
-		let public_url: string | null = null;
-		let mediaType: "image" | "video" | null = null;
-
-		// If a file is uploaded, upload to Cloudinary
-		if (req.file) {
-			const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
-				public_url: string;
-			};
-			public_url = result.public_url;
-			mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+		// Handle optional file upload
+		if (Array.isArray(req.files) && req.files.length > 0) {
+			for (const file of req.files) {
+				const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
+				public_url.push((result as { secure_url: string }).secure_url);
+				mediaType.push(file.mimetype.startsWith("video") ? "video" : "image");
+			}
 		}
-		try {
-			const { userId } = req.user ?? {};
-			const { title, description, type, topic } = req.body;
 
-			// Create the forum entry
-			const insertedForums = await db
-				.insert(forums)
-				.values({
-					userId: Number(userId),
-					title,
-					description,
-					type,
-					topic,
-					viewCount: 0,
+		const { userId } = req.user ?? { userId: 1 };
+		const { title, description, type, topic } = req.body;
+
+		if (!userId || !title || !description) {
+			return res.status(400).json({ success: false, message: "Missing required fields" });
+		}
+
+		// Insert forum
+		const newForum = await db
+			.insert(forums)
+			.values({
+				userId: Number(userId),
+				title,
+				description,
+				type,
+				topic,
+				viewCount: 0,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.returning();
+
+		// Insert forum media if uploaded
+		let newForumMedia = null;
+		if (public_url.length > 0 && mediaType.length > 0) {
+			for (let i = 0; i < public_url.length; i++) {
+				newForumMedia = await db.insert(forumMedias).values({
+					forumId: newForum[0].id,
+					url: public_url[i],
+					mediaType: mediaType[i],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-				})
-				.returning();
-			const newForum = insertedForums[0];
-
-			let newMedia = null;
-
-			// Only create media entry if file exists
-			if (public_url && mediaType) {
-				newMedia = await db.insert(forumMedias).values({
-					forumId: newForum.id,
-					url: public_url,
-					mediaType,
 				});
 			}
-
-			return res.status(201).json({
-				forum: newForum,
-				media: newMedia,
-			});
-		} catch (error) {
-			if (public_url) {
-				await deleteFromCloudinary(public_url, mediaType ?? undefined);
-			}
-			return res.status(500).json({
-				success: false,
-				error: (error as Error).message,
-			});
 		}
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
+		return res.status(201).json({
+			success: true,
+			forum: newForum,
+			media: newForumMedia,
+			mediaType,
 		});
+	} catch (error) {
+		// Clean up uploaded files if DB insert failed
+		if (public_url.length > 0 && mediaType.length > 0) {
+			try {
+				for (let i = 0; i < public_url.length; i++) {
+					await deleteFromCloudinary(public_url[i], mediaType[i]);
+				}
+			} catch (err) {
+				console.error("Failed to delete uploaded media:", err);
+			}
+		}
+
+		console.error(error);
+		return res.status(500).json({ success: false, error: (error as Error).message });
 	}
 };
 
 export const likeForum = async (req: AuthenticatedRequest, res: Response) => {
 	try {
-		const { id } = req.body;
-		const { userId } = req.user ?? {};
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
 
 		if (!userId) {
 			return res.status(401).json({ success: false, message: "Unauthorized" });
 		}
 
-		await db.insert(forumLikes).values({
-			userId: Number(userId),
-			forumId: Number(id),
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
+		const like = await db
+			.insert(forumLikes)
+			.values({
+				userId: Number(userId),
+				forumId: Number(id),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.returning();
 
-		return res.status(200).json({ success: true, message: "Forum liked successfully" });
+		return res.status(200).json({ like });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -158,19 +219,19 @@ export const likeForum = async (req: AuthenticatedRequest, res: Response) => {
 
 export const unlikeForum = async (req: AuthenticatedRequest, res: Response) => {
 	try {
-		const { id } = req.body;
-		const { userId } = req.user ?? {};
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
 
 		if (!userId) {
 			return res.status(401).json({ success: false, message: "Unauthorized" });
 		}
 
-		await db
+		const unlike = await db
 			.delete(forumLikes)
 			.where(and(eq(forumLikes.userId, Number(userId)), eq(forumLikes.forumId, Number(id))))
 			.returning();
 
-		return res.json({ success: true, message: "Forum unliked successfully" }).status(200);
+		return res.status(200).json({ unlike });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -180,73 +241,105 @@ export const unlikeForum = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = req.user ?? {};
-    const getCorrectUser=await db.select().from(forums).where(eq(forums.userId, Number(userId)));
-    if (!getCorrectUser || getCorrectUser.length === 0) {
-        return res.status(404).json({ success: false, message: "Forum not found" });
-    }
+	let public_url: string[] = [];
+	let mediaType: ("image" | "video")[] = [];
 	try {
-		let public_url: string | null = null;
-		let mediaType: "image" | "video" | null = null;
+		const { userId } = req.user ?? { userId: "1" };
+		const { id } = req.params;
+		const { title, description, type, topic, isRemovePhoto } = req.body;
 
-		// If a file is uploaded, upload to Cloudinary
-		if (req.file) {
-			const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
-				public_url: string;
-			};
-			public_url = result.public_url;
-			mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+		// Handle file uploads
+		if (Array.isArray(req.files) && req.files.length > 0) {
+			for (const file of req.files) {
+				const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
+				public_url.push((result as { secure_url: string }).secure_url);
+				mediaType.push(file.mimetype.startsWith("video") ? "video" : "image");
+			}
 		}
-		try {
-			const { title, description, type, topic } = req.body;
-			const { id } = req.params;
 
-			// Create the forum entry
-			const insertedForums = await db
-				.update(forums)
-				.set({
-					userId: Number(userId),
-					title,
-					description,
-					type,
-					topic,
-					updatedAt: new Date(),
-				})
-				.where(eq(forums.id, Number(id)))
+		let handleIfUserSendIsRemovePhotoTrueAndUploadMedia = isRemovePhoto;
+		if (public_url.length === 0 && mediaType.length === 0 && isRemovePhoto)
+			handleIfUserSendIsRemovePhotoTrueAndUploadMedia = false;
+
+		// Check forum ownership
+		const doesUserOwnThisForum = await db
+			.select()
+			.from(forums)
+			.where(and(eq(forums.id, Number(id)), eq(forums.userId, Number(userId))))
+			.limit(1);
+
+		if (doesUserOwnThisForum.length === 0) {
+			return res.status(404).json({ success: false, message: "Forum not found" });
+		}
+
+		// Remove media if requested
+		if (handleIfUserSendIsRemovePhotoTrueAndUploadMedia) {
+			const deletedMedia = await db
+				.delete(forumMedias)
+				.where(eq(forumMedias.forumId, Number(id)))
+				.returning({ url: forumMedias.url, mediaType: forumMedias.mediaType });
+
+			const mediaUrls = deletedMedia.map((m) => m.url);
+			const mediaTypes = deletedMedia.map((m) => m.mediaType);
+			for (let i = 0; i < mediaUrls.length; i++) {
+				await deleteFromCloudinary(mediaUrls[i] ?? "", mediaTypes[i] ?? undefined);
+			}
+		}
+
+		// Update forum
+		const updateForum = await db
+			.update(forums)
+			.set({
+				title,
+				description,
+				type,
+				topic,
+				updatedAt: new Date(),
+			})
+			.where(eq(forums.id, Number(id)))
+			.returning();
+
+		// If new media uploaded, replace old media
+		if (public_url.length > 0) {
+			const deletedMedia = await db
+				.delete(forumMedias)
+				.where(eq(forumMedias.forumId, Number(id)))
+				.returning({ url: forumMedias.url, mediaType: forumMedias.mediaType });
+
+			const mediaUrls = deletedMedia.map((m) => m.url);
+			const mediaTypes = deletedMedia.map((m) => m.mediaType);
+			for (let i = 0; i < mediaUrls.length; i++) {
+				await deleteFromCloudinary(mediaUrls[i] ?? "", mediaTypes[i] ?? undefined);
+			}
+
+			const addToForumMedia = await db
+				.insert(forumMedias)
+				.values(
+					public_url.map((url, index) => ({
+						forumId: Number(id),
+						url,
+						mediaType: mediaType[index],
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}))
+				)
 				.returning();
-			const newForum = insertedForums[0];
 
-			let newMedia = null;
-
-			// Only create media entry if file exists
-			if (public_url && mediaType) {
-				const oldMediaUrl = await db.select().from(forumMedias).where(eq(forumMedias.forumId, newForum.id));
-				if (oldMediaUrl && oldMediaUrl.length > 0) {
-					await deleteFromCloudinary(oldMediaUrl[0].url ?? "", oldMediaUrl[0].mediaType ?? undefined);
-				}
-				newMedia = await db
-					.update(forumMedias)
-					.set({
-						url: public_url,
-						mediaType,
-					})
-					.where(eq(forumMedias.forumId, newForum.id))
-					.returning();
-			}
-
+			const updateForumWithMedia = await Promise.all(
+				addToForumMedia.map(async (media) => {
+					const mediaDetails = await db.select().from(forumMedias).where(eq(forumMedias.id, media.id));
+					return {
+						...media,
+						mediaType: mediaDetails[0].mediaType,
+					};
+				})
+			);
 			return res.status(200).json({
-				forum: newForum,
-				media: newMedia,
-			});
-		} catch (error) {
-			if (public_url) {
-				await deleteFromCloudinary(public_url, mediaType ?? undefined);
-			}
-			return res.status(500).json({
-				success: false,
-				error: (error as Error).message,
+				updateForumWithMedia,
 			});
 		}
+
+		return res.status(200).json({ updateForum });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -256,128 +349,88 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
-    const { userId } = req.user ?? {};
-    const getCorrectUser=await db.select().from(forums).where(eq(forums.userId, Number(userId)));
-    if (!getCorrectUser || getCorrectUser.length === 0) {
-        return res.status(404).json({ success: false, message: "Forum not found" });
-    }
 	try {
-		const { id } = req.params;
+		const { userId } = req.user ?? { userId: "1" };
+		const { id } = req.params; // id = commentId
 
-		// Delete associated media
-		const doesForumExist = await db
+		const commentRecords = await db
 			.select()
-			.from(forums)
-			.where(eq(forums.id, Number(id)));
-		if (doesForumExist.length > 0) {
-			const doesCommentExist = await db
-				.select()
-				.from(forumComments)
-				.where(eq(forumComments.forumId, Number(id)));
-			const deletedCommentsId = doesCommentExist.map((comment) => comment.id);
-			if (deletedCommentsId.length > 0) {
-				await db
-					.delete(forumReplies)
-					.where(inArray(forumReplies.forumCommentId, deletedCommentsId))
-					.returning();
-			}
-			await db.delete(forumComments).where(inArray(forumComments.id, deletedCommentsId)).returning();
-			await db
-				.delete(forums)
-				.where(eq(forums.id, Number(id)))
-				.returning();
-		} else {
-			return res.status(404).json({ success: false, message: "Forum not found" });
-		}
-		// 1. Get all media for the forum itself
-		const mediaForum = await db
-			.select()
-			.from(forumMedias)
-			.where(eq(forumMedias.forumId, Number(id)));
+			.from(forumComments)
+			.where(and(eq(forumComments.forumId, Number(id)), eq(forumComments.userId, Number(userId))))
+        let deleteReplies=null;
+        let deleteComments=null;
+        if(commentRecords.length>0){
+            for(const commentRecord of commentRecords){
+                deleteReplies= await deleteReply(Number(userId), null, commentRecord.id);
+            }
+            deleteComments= await deleteComment(Number(userId), null, Number(id));
+        }
+        const delForum= await deleteForumFunction(Number(userId), Number(id));
+        return res.json({
+            success: true,
+            deleteReplies,
+            deleteComments,
+            delForum
+        })
 
-		// 2. Get all comments for this forum
-        const comments = await db
-            .select()
-            .from(forumComments)
-            .where(eq(forumComments.forumId, Number(id)));
+		// if (commentRecord.length === 0) {
+		// 	return res.status(404).json({ success: false, message: "Comment not found" });
+		// }
 
-		const commentIds = comments.map((c) => c.id);
+        // const replyToTheCommentRecord = await db
+        //     .select({ id: forumReplies.id })
+        //     .from(forumReplies)
+        //     .where(eq(forumReplies.forumCommentId, Number(id)));
+        // const commentIds=replyToTheCommentRecord.map((r) => r.id);
+		// let replyResults = null;
+		// if (replyToTheCommentRecord.length > 0) {
+        //     for(const commentId of commentIds) {
+		// 		replyResults = await deleteReply(Number(userId), null, commentId);
+		// 	}
+		// }
 
-		// 3. Get all media for comments (assuming forumCommentMedias is the comment media table)
-		let mediaForumComment: Array<{
-			id: number;
-			forumCommentId: number | null;
-			url: string | null;
-			mediaType: "image" | "video" | null;
-			createdAt: Date | null;
-			updatedAt: Date | null;
-		}> = [];
-		if (commentIds.length > 0) {
-			mediaForumComment = await db
-				.select()
-				.from(forumCommentMedias)
-				.where(inArray(forumCommentMedias.forumCommentId, commentIds));
-		}
+		// const commentToForumRecord = await db
+		// 	.select()
+		// 	.from(forumComments)
+		// 	.where(eq(forumComments.id, Number(id)));
 
-		// 4. Get all replies for these comments
-		let replies: Array<typeof forumReplies.$inferSelect> = [];
-		if (commentIds.length > 0) {
-			replies = await db.select().from(forumReplies).where(inArray(forumReplies.forumCommentId, commentIds));
-		}
+		// let commentResults = null;
+		// if (commentToForumRecord.length > 0) {
+		// 	commentResults = await deleteComment(Number(userId), null, Number(id));
+		// }
 
-		const replyIds = replies.map((r) => r.id);
-
-		// 5. Get all media for replies (assuming forumReplyMedias is the reply media table)
-		let mediaForumReply: Array<{
-			id: number;
-			forumReplyId: number | null;
-			url: string | null;
-			mediaType: "image" | "video" | null;
-			createdAt: Date | null;
-			updatedAt: Date | null;
-		}> = [];
-		if (replyIds.length > 0) {
-			mediaForumReply = await db
-				.select()
-				.from(forumReplyMedias)
-				.where(inArray(forumReplyMedias.forumReplyId, replyIds));
-		}
-
-		// 6. Delete media files from Cloudinary and delete media rows
-
-		// Delete forum media
-		for (const m of mediaForum) {
-			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
-			}
-		}
-		await db.delete(forumMedias).where(eq(forumMedias.forumId, Number(id)));
-
-		// Delete comment media
-		for (const m of mediaForumComment) {
-			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
-			}
-		}
-		if (commentIds.length > 0) {
-			await db.delete(forumCommentMedias).where(inArray(forumCommentMedias.forumCommentId, commentIds));
-		}
-
-		// Delete reply media
-		for (const m of mediaForumReply) {
-			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
-			}
-		}
-		if (replyIds.length > 0) {
-			await db.delete(forumReplyMedias).where(inArray(forumReplyMedias.forumReplyId, replyIds));
-		}
-
-		return res.status(200).json({ success: true, message: "Forum deleted successfully" });
+		// const forumResults = await deleteForumFunction(Number(userId), Number(id));
+		// return res.status(200).json({
+		// 	success: true,
+		// 	message: "Forum deleted successfully",
+		// 	replyResults,
+		// 	commentResults,
+		// 	forumResults,
+		// });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
 			error: (error as Error).message,
 		});
 	}
+};
+
+const deleteForumFunction = async (userId: number, id: number) => {
+	// Delete associated media
+	const deletedMedia = await db
+		.delete(forumMedias)
+		.where(eq(forumMedias.forumId, id))
+		.returning({ url: forumMedias.url, mediaType: forumMedias.mediaType });
+
+	for (const media of deletedMedia) {
+		await deleteFromCloudinary(media.url ?? "", media.mediaType ?? undefined);
+	}
+
+	// Delete the forum itself
+	const deletedForum = await db
+		.delete(forums)
+		.where(and(eq(forums.id, id), eq(forums.userId, userId)))
+		.returning();
+
+	return { deletedForum, deletedMedia };
 };

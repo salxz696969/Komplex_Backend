@@ -21,8 +21,8 @@ router.get("/:id", getBlogById);
 router.post("/", upload.any(), postBlog);
 
 // Save a blog
-router.post("/save/:id", saveBlog);
-router.delete("/unsave/:id", unsaveBlog);
+router.post("/:id/save", saveBlog);
+router.delete("/:id/unsave", unsaveBlog);
 
 // Update a blog
 router.patch("/:id", upload.any(), updateBlog);

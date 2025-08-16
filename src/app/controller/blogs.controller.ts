@@ -8,7 +8,7 @@ import { blogs, mediaTypeEnum, users, userSavedBlogs } from "../../db/schema";
 import { and, eq } from "drizzle-orm";
 import { blogMedia } from "../../db/models/blog_media";
 import { create } from "domain";
-import { formatDate } from "../utils/formatter";
+import { sql } from "drizzle-orm";
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
@@ -152,7 +152,7 @@ export const getAllBlogs = async (req: Request, res: Response) => {
           type: blog.type,
           topic: blog.topic,
           viewCount: blog.viewCount,
-          createdAt: formatDate(blog.createdAt!),
+          createdAt: blog.createdAt,
           username: `${blog.userFirstName} ${blog.userLastName}`,
           media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
         };
@@ -219,7 +219,7 @@ export const getBlogById = async (req: Request, res: Response) => {
           type: blog.type,
           topic: blog.topic,
           viewCount: blog.viewCount,
-          createdAt: formatDate(blog.createdAt!),
+          createdAt: blog.createdAt,
           username: `${blog.userFirstName} ${blog.userLastName}`,
           media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
         };
@@ -445,7 +445,10 @@ export const deleteBlog = async (req: AuthenticatedRequest, res: Response) => {
       await deleteFromCloudinary(media.url ?? "", undefined);
     }
 
-    console.log("media deleted", deletedMedia);
+    // Step 3: Delete blog saves
+    await db
+      .delete(userSavedBlogs)
+      .where(eq(userSavedBlogs.blogId, Number(id)));
 
     // Step 4: Delete blog itself
     const deletedBlog = await db
