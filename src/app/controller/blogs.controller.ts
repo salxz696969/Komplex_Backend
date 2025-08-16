@@ -14,18 +14,23 @@ interface AuthenticatedRequest extends Request {
 }
 
 export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
-	let public_url: string[] = [];
+	let secure_url: string[] = [];
+	let public_id: string[] = [];
 	let mediaType: ("image" | "video")[] = [];
 
 	try {
 		// Handle optional file upload
 		if (Array.isArray(req.files) && req.files.length > 0) {
-			for (const file of req.files) {
-				const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
-				public_url.push((result as { secure_url: string }).secure_url);
+			const files = req.files as Express.Multer.File[];
+			const uploadResults = await Promise.all(
+				files.map((file) => uploadToCloudinary(file.buffer, "my_app_uploads", "auto"))
+			);
 
-				mediaType.push(file.mimetype.startsWith("video") ? "video" : "image");
-			}
+			uploadResults.forEach((result, index) => {
+				secure_url.push((result as { secure_url: string }).secure_url);
+				public_id.push((result as { public_id: string }).public_id);
+				mediaType.push(files[index].mimetype.startsWith("video") ? "video" : "image");
+			});
 		}
 
 		const { userId } = req.user ?? { userId: 1 };
@@ -53,11 +58,12 @@ export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
 
 		// Insert blog media if uploaded
 		let newBlogMedia = null;
-		if (public_url.length > 0 && mediaType.length > 0) {
-			for (let i = 0; i < public_url.length; i++) {
+		if (secure_url.length > 0 && mediaType.length > 0) {
+			for (let i = 0; i < secure_url.length; i++) {
 				newBlogMedia = await db.insert(blogMedia).values({
 					blogId: newBlog[0].id,
-					url: public_url[i],
+					url: secure_url[i],
+					urlForDeletion: public_id[i], // Assuming you want to use the same URL for deletion
 					mediaType: mediaType[i],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -73,11 +79,9 @@ export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
 		});
 	} catch (error) {
 		// Clean up uploaded file if DB insert failed
-		if (public_url.length > 0 && mediaType.length > 0) {
+		if (secure_url.length > 0 && mediaType.length > 0) {
 			try {
-				for (let i = 0; i < public_url.length; i++) {
-					await deleteFromCloudinary(public_url[i], mediaType[i]);
-				}
+				await Promise.all(secure_url.map((url, index) => deleteFromCloudinary(url, mediaType[index])));
 			} catch (err) {
 				console.error("Failed to delete uploaded media:", err);
 			}
@@ -116,7 +120,10 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 			.from(blogs)
 			.leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
 			.leftJoin(users, eq(blogs.userId, users.id))
-			.leftJoin(userSavedBlogs, and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId))))
+			.leftJoin(
+				userSavedBlogs,
+				and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId)))
+			)
 			.where(conditions.length > 0 ? and(...conditions) : undefined);
 
 		const blogsWithMedia = Object.values(
@@ -183,7 +190,10 @@ export const getBlogById = async (req: Request, res: Response) => {
 			.from(blogs)
 			.leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
 			.leftJoin(users, eq(blogs.userId, users.id))
-			.leftJoin(userSavedBlogs, and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId))))
+			.leftJoin(
+				userSavedBlogs,
+				and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId)))
+			)
 			.where(eq(blogs.id, Number(id)));
 
 		if (!blog || blog.length === 0) {
@@ -286,23 +296,36 @@ export const unsaveBlog = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const updateBlog = async (req: AuthenticatedRequest, res: Response) => {
-	let public_url: string[] = [];
+	let public_id: string[] = [];
+	let secure_url: string[] = [];
 	let mediaType: ("image" | "video")[] = [];
 	try {
 		const { userId } = req.user ?? { userId: "1" };
 		const { id } = req.params;
-		const { title, description, type, topic, isRemovePhoto } = req.body;
-		if (Array.isArray(req.files) && req.files.length > 0) {
-			for (const file of req.files) {
-				const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
-				public_url.push((result as { secure_url: string }).secure_url);
-
-				mediaType.push(file.mimetype.startsWith("video") ? "video" : "image");
+		const { title, description, type, topic, photosToRemove } = req.body;
+		// photosToRemoveParsed is already destructured from req.body, no need to redeclare its type here
+		let photosToRemoveParse: { url: string }[] = [];
+		if (req.body.photosToRemove) {
+			try {
+				photosToRemoveParse = JSON.parse(req.body.photosToRemove);
+			} catch (err) {
+				return res.status(400).json({ success: false, message: "Invalid photosToRemove format" });
 			}
 		}
-		let handleIfUserSendIsRemovePhotoTrueAndUploadMedia = isRemovePhoto;
-		if (public_url.length === 0 && mediaType.length === 0 && isRemovePhoto)
-			handleIfUserSendIsRemovePhotoTrueAndUploadMedia = false;
+		if (Array.isArray(req.files) && req.files.length > 0) {
+			const files = req.files as Express.Multer.File[];
+			const uploadResults = await Promise.all(
+				files.map((file) => uploadToCloudinary(file.buffer, "my_app_uploads", "auto"))
+			);
+
+			uploadResults.forEach((result, index) => {
+				secure_url.push((result as { secure_url: string }).secure_url);
+				public_id.push((result as { public_id: string }).public_id);
+				mediaType.push(files[index].mimetype.startsWith("video") ? "video" : "image");
+			});
+		}
+
+		console.log(secure_url, public_id, mediaType);
 		const doesUserOwnThisBlog = await db
 			.select()
 			.from(blogs)
@@ -312,17 +335,41 @@ export const updateBlog = async (req: AuthenticatedRequest, res: Response) => {
 			return res.status(404).json({ success: false, message: "Blog not found" });
 		}
 
-		if (handleIfUserSendIsRemovePhotoTrueAndUploadMedia) {
-			const deletedMedia = await db
-				.delete(blogMedia)
-				.where(eq(blogMedia.blogId, Number(id)))
-				.returning({ url: blogMedia.url });
+		let deleteMedia = null;
+		if (photosToRemoveParse && photosToRemoveParse.length > 0) {
+			const deleteResults = await Promise.all(
+				photosToRemoveParse.map(async (photoToRemove) => {
+					await deleteFromCloudinary(photoToRemove.url ?? "", undefined);
+					const deleted = await db
+						.delete(blogMedia)
+						.where(and(eq(blogMedia.blogId, Number(id)), eq(blogMedia.urlForDeletion, photoToRemove.url)))
+						.returning();
+					console.log(photoToRemove.url);
+					return deleted;
+				})
+			);
 
-			const mediaUrls = deletedMedia.map((m) => m.url);
-			for (const mediaUrl of mediaUrls) {
-				await deleteFromCloudinary(mediaUrl ?? "", undefined);
-			}
+			// Combine all deleted media if you need to return
+			deleteMedia = deleteResults.flat();
 		}
+
+		let newBlogMedia = null;
+		if (secure_url.length > 0) {
+  newBlogMedia = await db
+    .insert(blogMedia)
+    .values(
+      secure_url.map((url, index) => ({
+        blogId: Number(id),
+        url,
+        urlForDeletion: public_id[index], // <-- use the correct column name
+        mediaType: mediaType[index],      // <-- also make sure this matches the table
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }))
+    )
+    .returning();
+}
+
 
 		const updateBlog = await db
 			.update(blogs)
@@ -336,43 +383,7 @@ export const updateBlog = async (req: AuthenticatedRequest, res: Response) => {
 			.where(eq(blogs.id, Number(id)))
 			.returning();
 
-		if (public_url.length > 0) {
-			const deletedMedia = await db
-				.delete(blogMedia)
-				.where(eq(blogMedia.blogId, Number(id)))
-				.returning({ url: blogMedia.url });
-
-			const mediaUrls = deletedMedia.map((m) => m.url);
-			for (const mediaUrl of mediaUrls) {
-				await deleteFromCloudinary(mediaUrl ?? "", undefined);
-			}
-
-			const addToBlogMedia = await db
-				.insert(blogMedia)
-				.values(
-					public_url.map((url, index) => ({
-						blogId: Number(id),
-						url,
-						mediaType: mediaType[index],
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					}))
-				)
-				.returning();
-			const updateBlogWithMedia = await Promise.all(
-				addToBlogMedia.map(async (media) => {
-					const mediaDetails = await db.select().from(blogMedia).where(eq(blogMedia.id, media.id));
-					return {
-						...media,
-						mediaType: mediaDetails[0].mediaType,
-					};
-				})
-			);
-			return res.status(200).json({
-				updateBlogWithMedia,
-			});
-		}
-		return res.status(200).json({ updateBlog });
+		return res.status(200).json({ updateBlog, newBlogMedia, deleteMedia });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -401,10 +412,10 @@ export const deleteBlog = async (req: AuthenticatedRequest, res: Response) => {
 		const deletedMedia = await db
 			.delete(blogMedia)
 			.where(eq(blogMedia.blogId, Number(id)))
-			.returning({ url: blogMedia.url });
+			.returning({ urlToDelete: blogMedia.urlForDeletion, url: blogMedia.url });
 
-		for (const media of deletedMedia) {
-			await deleteFromCloudinary(media.url ?? "", undefined);
+		if (deletedMedia && deletedMedia.length > 0) {
+			await Promise.all(deletedMedia.map((media) => deleteFromCloudinary(media.urlToDelete ?? "", undefined)));
 		}
 
 		// Step 3: Delete blog saves
