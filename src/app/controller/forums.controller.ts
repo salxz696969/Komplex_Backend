@@ -23,22 +23,48 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 		if (type) conditions.push(eq(forums.type, type as string));
 		if (topic) conditions.push(eq(forums.topic, topic as string));
 
-		const forumsFromDb =
-			conditions.length > 0
-				? await db
-						.select()
-						.from(forums)
-						.where(and(...conditions))
-				: await db.select().from(forums);
-
-		const forumsWithMedia = await Promise.all(
-			forumsFromDb.map(async (forum) => {
-				const media = await db.select().from(forumMedias).where(eq(forumMedias.forumId, forum.id));
-				return {
-					...forum,
-					media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
-				};
+		const forumRecords = await db
+			.select({
+				id: forums.id,
+				userId: forums.userId,
+				title: forums.title,
+				description: forums.description,
+				type: forums.type,
+				topic: forums.topic,
+				viewCount: forums.viewCount,
+				createdAt: forums.createdAt,
+				updatedAt: forums.updatedAt,
+				mediaUrl: forumMedias.url,
+				mediaType: forumMedias.mediaType,
 			})
+			.from(forums)
+			.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
+			.where(conditions.length > 0 ? and(...conditions) : undefined);
+
+		const forumsWithMedia = Object.values(
+			forumRecords.reduce((acc, forum) => {
+				if (!acc[forum.id]) {
+					acc[forum.id] = {
+						id: forum.id,
+						userId: forum.userId,
+						title: forum.title,
+						description: forum.description,
+						type: forum.type,
+						topic: forum.topic,
+						viewCount: forum.viewCount,
+						createdAt: forum.createdAt,
+						updatedAt: forum.updatedAt,
+						media: [] as { url: string; type: string }[],
+					};
+				}
+				if (forum.mediaUrl) {
+					acc[forum.id].media.push({
+						url: forum.mediaUrl,
+						type: forum.mediaType,
+					});
+				}
+				return acc;
+			}, {} as Record<number, any>)
 		);
 
 		return res.status(200).json({ forumsWithMedia });
