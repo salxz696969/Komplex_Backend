@@ -1,192 +1,474 @@
-CREATE TYPE "media_type" AS ENUM ('image', 'video');
-
-CREATE TABLE "users" (
-  id VARCHAR(36) PRIMARY KEY,
-  first_name TEXT,
-  last_name TEXT,
-  date_of_birth DATE,
-  is_admin BOOLEAN,
-  is_verified BOOLEAN,
-  email TEXT,
-  password TEXT,
-  phone TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+create table users
+(
+    id            serial
+        primary key,
+    first_name    text,
+    last_name     text,
+    date_of_birth date,
+    is_admin      boolean,
+    is_verified   boolean,
+    email         text,
+    password      text,
+    phone         text,
+    created_at    timestamp,
+    updated_at    timestamp
 );
 
-CREATE TABLE "followers" (
-  id VARCHAR(36) PRIMARY KEY,
-  follower_id VARCHAR(36) REFERENCES "users"(id),
-  followed_id VARCHAR(36) REFERENCES "users"(id),
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table users
+    owner to postgres;
+
+create table followers
+(
+    id          serial
+        primary key,
+    user_id     integer
+        references users,
+    followed_id integer
+        references users,
+    created_at  timestamp,
+    updated_at  timestamp
 );
 
-CREATE TABLE "blogs" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  title TEXT,
-  description TEXT,
-  image_url TEXT,
-  view_count INTEGER,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table followers
+    owner to postgres;
+
+create table blogs
+(
+    id          serial
+        primary key,
+    user_id     integer
+        references users,
+    title       text,
+    description text,
+    type        text,
+    topic       text,
+    view_count  integer,
+    created_at  timestamp,
+    updated_at  timestamp,
+    like_amount integer
 );
 
-CREATE TABLE "forums" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  title TEXT,
-  description TEXT,
-  view_count INTEGER,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table blogs
+    owner to postgres;
+
+create table forums
+(
+    id          serial
+        primary key,
+    user_id     integer
+        references users,
+    title       text,
+    description text,
+    view_count  integer,
+    created_at  timestamp,
+    updated_at  timestamp,
+    type        text,
+    topic       text
 );
 
-CREATE TABLE "forum_likes" (
-  id VARCHAR(36) PRIMARY KEY,
-  forum_id VARCHAR(36) REFERENCES "forums"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table forums
+    owner to postgres;
+
+create table forum_likes
+(
+    id         serial
+        primary key,
+    forum_id   integer
+        references forums,
+    user_id    integer
+        references users,
+    created_at timestamp,
+    updated_at timestamp,
+    constraint unique_user_forum_like
+        unique (user_id, forum_id)
 );
 
-CREATE TABLE "forum_medias" (
-  id VARCHAR(36) PRIMARY KEY,
-  forum_id VARCHAR(36) REFERENCES "forums"(id),
-  url TEXT,
-  media_type "media_type",
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table forum_likes
+    owner to postgres;
+
+create table forum_medias
+(
+    id         serial
+        primary key,
+    forum_id   integer
+        references forums,
+    url        text,
+    media_type media_type,
+    created_at timestamp,
+    updated_at timestamp
 );
 
-CREATE TABLE "forum_comments" (
-  id VARCHAR(36) PRIMARY KEY,
-  forum_id VARCHAR(36) REFERENCES "forums"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  description TEXT,
-  image_url TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table forum_medias
+    owner to postgres;
+
+create table forum_comments
+(
+    id          serial
+        primary key,
+    forum_id    integer
+        references forums,
+    user_id     integer
+        references users,
+    description text,
+    created_at  timestamp,
+    updated_at  timestamp
 );
 
-CREATE TABLE "forum_replies" (
-  id VARCHAR(36) PRIMARY KEY,
-  forum_comment_id VARCHAR(36) REFERENCES "forum_comments"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  description TEXT,
-  image_url TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table forum_comments
+    owner to postgres;
+
+create table forum_replies
+(
+    id               serial
+        primary key,
+    forum_comment_id integer
+        references forum_comments,
+    user_id          integer
+        references users,
+    description      text,
+    created_at       timestamp,
+    updated_at       timestamp
 );
 
-CREATE TABLE "videos" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  title TEXT,
-  description TEXT,
-  view_count INTEGER,
-  video_url TEXT,
-  thumbnail_url TEXT,
-  duration INTEGER,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table forum_replies
+    owner to postgres;
+
+create table videos
+(
+    id            serial
+        primary key,
+    user_id       integer
+        references users,
+    title         text,
+    description   text,
+    view_count    integer,
+    video_url     text,
+    thumbnail_url text,
+    duration      integer,
+    created_at    timestamp,
+    updated_at    timestamp
 );
 
-CREATE TABLE "video_likes" (
-  id VARCHAR(36) PRIMARY KEY,
-  video_id VARCHAR(36) REFERENCES "videos"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table videos
+    owner to postgres;
+
+create table video_likes
+(
+    id         serial
+        primary key,
+    video_id   integer
+        references videos,
+    user_id    integer
+        references users,
+    created_at timestamp,
+    updated_at timestamp,
+    constraint unique_user_video_like
+        unique (user_id, video_id)
 );
 
-CREATE TABLE "video_comments" (
-  id VARCHAR(36) PRIMARY KEY,
-  video_id VARCHAR(36) REFERENCES "videos"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  description TEXT,
-  image_url TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table video_likes
+    owner to postgres;
+
+create table video_comments
+(
+    id          serial
+        primary key,
+    video_id    integer
+        references videos,
+    user_id     integer
+        references users,
+    description text,
+    image_url   text,
+    created_at  timestamp,
+    updated_at  timestamp
 );
 
-CREATE TABLE "video_replies" (
-  id VARCHAR(36) PRIMARY KEY,
-  video_comment_id VARCHAR(36) REFERENCES "video_comments"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  description TEXT,
-  image_url TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table video_comments
+    owner to postgres;
+
+create table video_replies
+(
+    id               serial
+        primary key,
+    video_comment_id integer
+        references video_comments,
+    user_id          integer
+        references users,
+    description      text,
+    image_url        text,
+    created_at       timestamp,
+    updated_at       timestamp
 );
 
-CREATE TABLE "exercises" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  duration INTEGER,
-  title TEXT,
-  description TEXT,
-  subject TEXT,
-  topic TEXT,
-  grade INTEGER,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table video_replies
+    owner to postgres;
+
+create table exercises
+(
+    id          serial
+        primary key,
+    user_id     integer
+        references users,
+    duration    integer,
+    title       text,
+    description text,
+    subject     text,
+    topic       text,
+    grade       integer,
+    created_at  timestamp,
+    updated_at  timestamp
 );
 
-CREATE TABLE "questions" (
-  id VARCHAR(36) PRIMARY KEY,
-  exercise_id VARCHAR(36) REFERENCES "exercises"(id),
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  title TEXT,
-  question_type TEXT,
-  points INTEGER,
-  image_url TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table exercises
+    owner to postgres;
+
+create table questions
+(
+    id            serial
+        primary key,
+    exercise_id   integer
+        references exercises,
+    user_id       integer
+        references users,
+    title         text,
+    question_type text,
+    points        integer,
+    image_url     text,
+    created_at    timestamp,
+    updated_at    timestamp
 );
 
-CREATE TABLE "choices" (
-  id VARCHAR(36) PRIMARY KEY,
-  question_id VARCHAR(36) REFERENCES "questions"(id),
-  text TEXT,
-  is_correct BOOLEAN,
-  created_at TIMESTAMP
+alter table questions
+    owner to postgres;
+
+create table choices
+(
+    id          serial
+        primary key,
+    question_id integer
+        references questions,
+    text        text,
+    is_correct  boolean,
+    created_at  timestamp
 );
 
-CREATE TABLE "user_saved_blogs" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  blog_id VARCHAR(36) REFERENCES "blogs"(id),
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table choices
+    owner to postgres;
+
+create table user_saved_blogs
+(
+    id         serial
+        primary key,
+    user_id    integer
+        references users,
+    blog_id    integer
+        references blogs,
+    created_at timestamp,
+    updated_at timestamp,
+    constraint unique_user_blog_save
+        unique (user_id, blog_id)
 );
 
-CREATE TABLE "user_saved_videos" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  video_id VARCHAR(36) REFERENCES "videos"(id),
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table user_saved_blogs
+    owner to postgres;
+
+create table user_saved_videos
+(
+    id         serial
+        primary key,
+    user_id    integer
+        references users,
+    video_id   integer
+        references videos,
+    created_at timestamp,
+    updated_at timestamp,
+    constraint unique_user_video_save
+        unique (user_id, video_id)
 );
 
-CREATE TABLE "user_exercise_history" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  exercise_id VARCHAR(36) REFERENCES "exercises"(id),
-  score INTEGER,
-  time_taken INTEGER,
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table user_saved_videos
+    owner to postgres;
+
+create table user_exercise_history
+(
+    id           serial
+        primary key,
+    user_id      integer
+        references users,
+    exercise_id  integer
+        references exercises,
+    score        integer,
+    time_taken   integer,
+    completed_at timestamp,
+    created_at   timestamp,
+    updated_at   timestamp,
+    constraint unique_user_exercise_history
+        unique (user_id, exercise_id)
 );
 
-CREATE TABLE "user_video_history" (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) REFERENCES "users"(id),
-  video_id VARCHAR(36) REFERENCES "videos"(id),
-  time_watched INTEGER,
-  watched_at TIMESTAMP,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
+alter table user_exercise_history
+    owner to postgres;
+
+create table user_video_history
+(
+    id           serial
+        primary key,
+    user_id      integer
+        references users,
+    video_id     integer
+        references videos,
+    time_watched integer,
+    watched_at   timestamp,
+    created_at   timestamp,
+    updated_at   timestamp,
+    constraint unique_user_video_history
+        unique (user_id, video_id)
 );
+
+alter table user_video_history
+    owner to postgres;
+
+create table forum_comment_likes
+(
+    id               serial
+        primary key,
+    forum_comment_id integer
+        references forum_comments,
+    user_id          integer
+        references users,
+    created_at       timestamp,
+    updated_at       timestamp,
+    constraint unique_user_comment_like
+        unique (user_id, forum_comment_id)
+);
+
+alter table forum_comment_likes
+    owner to postgres;
+
+create table forum_comment_medias
+(
+    id               serial
+        primary key,
+    forum_comment_id integer
+        references forum_comments,
+    url              text,
+    media_type       media_type,
+    created_at       timestamp,
+    updated_at       timestamp
+);
+
+alter table forum_comment_medias
+    owner to postgres;
+
+create table forum_reply_likes
+(
+    id             serial
+        primary key,
+    forum_reply_id integer
+        references forum_replies,
+    user_id        integer
+        references users,
+    created_at     timestamp,
+    updated_at     timestamp,
+    constraint unique_user_forum_reply_like
+        unique (user_id, forum_reply_id)
+);
+
+alter table forum_reply_likes
+    owner to postgres;
+
+create table forum_reply_medias
+(
+    id             serial
+        primary key,
+    forum_reply_id integer
+        references forum_replies,
+    url            text,
+    media_type     media_type,
+    created_at     timestamp,
+    updated_at     timestamp
+);
+
+alter table forum_reply_medias
+    owner to postgres;
+
+create table blog_media
+(
+    id               serial
+        primary key,
+    blog_id          integer
+        references blogs,
+    url              text,
+    media_type       media_type,
+    created_at       timestamp,
+    updated_at       timestamp,
+    url_for_deletion text
+);
+
+alter table blog_media
+    owner to postgres;
+
+create table video_comment_medias
+(
+    id               serial
+        primary key,
+    video_comment_id integer
+        references video_comments,
+    url              text,
+    media_type       media_type,
+    created_at       timestamp,
+    updated_at       timestamp
+);
+
+alter table video_comment_medias
+    owner to postgres;
+
+create table video_comment_like
+(
+    id               serial
+        primary key,
+    video_comment_id integer
+        references video_comments,
+    user_id          integer,
+    media_type       media_type,
+    created_at       timestamp,
+    updated_at       timestamp,
+    constraint unique_user_video_comment_like
+        unique (user_id, video_comment_id)
+);
+
+alter table video_comment_like
+    owner to postgres;
+
+create table video_reply_medias
+(
+    id             serial
+        primary key,
+    video_reply_id integer
+        references video_replies,
+    url            text,
+    media_type     media_type,
+    created_at     timestamp,
+    updated_at     timestamp
+);
+
+alter table video_reply_medias
+    owner to postgres;
+
+create table video_reply_like
+(
+    id             serial
+        primary key,
+    video_reply_id integer
+        references video_replies,
+    user_id        integer,
+    media_type     media_type,
+    created_at     timestamp,
+    updated_at     timestamp,
+    constraint unique_user_video_reply_like
+        unique (user_id, video_reply_id)
+);
+
+alter table video_reply_like
+    owner to postgres;
+
