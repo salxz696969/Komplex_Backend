@@ -4,6 +4,7 @@ import {
   videoLikes,
   videos,
   userSavedVideos,
+  users,
 } from "../../../db/schema";
 import { Request, Response } from "express";
 import { eq, sql } from "drizzle-orm";
@@ -45,6 +46,16 @@ export const getAllVideos = async (req: Request, res: Response) => {
           .from(userSavedVideos)
           .where(eq(userSavedVideos.videoId, video.id));
 
+        let username;
+        if (video.userId) {
+          const user = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, video.userId));
+
+          username = user[0]?.firstName + " " + user[0]?.lastName;
+        }
+
         return {
           id: video.id,
           title: video.title,
@@ -57,6 +68,7 @@ export const getAllVideos = async (req: Request, res: Response) => {
           commentCount: Number(commentCount[0]?.count || 0),
           replyCount: Number(replyCount[0]?.count || 0),
           saveCount: Number(saveCount[0]?.count || 0),
+          username: username,
           createdAt: video.createdAt,
           updatedAt: video.updatedAt,
         };

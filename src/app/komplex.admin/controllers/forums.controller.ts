@@ -5,6 +5,7 @@ import {
   forumMedias,
   forumReplies,
   forums,
+  users,
 } from "../../../db/schema";
 import { db } from "../../../db/index";
 import { Request, Response } from "express";
@@ -40,6 +41,7 @@ export const getAllForums = async (
         ? db
             .select()
             .from(forums)
+            // .fullJoin(users, eq(forums.userId, users.id))
             .where(and(...conditions))
         : db.select().from(forums);
 
@@ -80,18 +82,29 @@ export const getAllForums = async (
           .from(forumLikes)
           .where(eq(forumLikes.forumId, forum.id));
 
+        let username;
+        if (forum.userId) {
+          const user = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, forum.userId));
+
+          username = user[0]?.firstName + " " + user[0]?.lastName;
+        }
+
         return {
           id: forum.id,
           title: forum.title,
           description: forum.description,
           type: forum.type,
           topic: forum.topic,
-          viewCount: forum.viewCount,
-          likeCount: likeCount[0]?.count || 0,
-          commentCount: commentCount[0]?.count || 0,
-          replyCount: replyCount[0]?.count || 0,
+          viewCount: Number(forum.viewCount),
+          likeCount: Number(likeCount[0]?.count || 0),
+          commentCount: Number(commentCount[0]?.count || 0),
+          replyCount: Number(replyCount[0]?.count || 0),
           createdAt: forum.createdAt,
           updatedAt: forum.updatedAt,
+          username: username,
           media: media,
         };
       })
