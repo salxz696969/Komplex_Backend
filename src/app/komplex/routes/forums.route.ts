@@ -1,5 +1,5 @@
 import { Router } from "express";
-import upload from "../middleware/upload";
+import upload from "../../middleware/upload";
 import {
 	deleteForum,
 	getAllForums,

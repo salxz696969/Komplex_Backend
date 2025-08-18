@@ -8,7 +8,7 @@ import {
 	deleteBlog,
 	unsaveBlog,
 } from "../controllers/blogs.controller";
-import upload from "../middleware/upload";
+import upload from "../../middleware/upload";
 const router = Router();
 
 // Get all blogs

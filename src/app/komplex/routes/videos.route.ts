@@ -10,7 +10,7 @@ import {
 	unsaveVideo,
 	updateVideo,
 } from "../controllers/videos.controller";
-import upload from "../middleware/upload";
+import upload from "../../middleware/upload";
 const router = Router();
 
 // Add your route handlers here

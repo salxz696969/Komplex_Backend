@@ -7,7 +7,7 @@ import {
 	unlikeForumComment,
 	updateForumComment,
 } from "../controllers/forum_comments.controller";
-import upload from "../middleware/upload";
+import upload from "../../middleware/upload";
 const router = Router();
 
 // Add your route handlers here
