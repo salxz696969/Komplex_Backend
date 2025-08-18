@@ -9,6 +9,7 @@ import subjectsRouter from "./subjects.route";
 import databaseRouter from "./database.route";
 import videosRouter from "./videos.route";
 import dashboardRouter from "./dashborad.route";
+import feedbacksRouter from "./feedbacks.route";
 const adminRoutes = Router();
 // should have /database but let it be like this for now
 adminRoutes.use("/database", databaseRouter);
@@ -16,10 +17,10 @@ adminRoutes.use("/blogs", blogsRouter);
 adminRoutes.use("/exercises", exercisesRouter);
 adminRoutes.use("/grades", gradesRouter);
 adminRoutes.use("/subjects", subjectsRouter);
-adminRoutes.use("/followers", followersRouter);
+adminRoutes.use("/followers", followersRouter); 
 adminRoutes.use("/forums", forumsRouter);
 adminRoutes.use("/users", usersRouter);
 adminRoutes.use("/videos", videosRouter);
 adminRoutes.use("/dashboard", dashboardRouter);
-
+adminRoutes.use("/feedbacks", feedbacksRouter);
 export default adminRoutes;
