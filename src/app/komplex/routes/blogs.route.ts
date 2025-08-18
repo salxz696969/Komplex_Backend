@@ -1,12 +1,12 @@
 import { Router } from "express";
 import {
-	postBlog,
-	getAllBlogs,
-	getBlogById,
-	saveBlog,
-	updateBlog,
-	deleteBlog,
-	unsaveBlog,
+  postBlog,
+  getAllBlogs,
+  getBlogById,
+  saveBlog,
+  updateBlog,
+  deleteBlog,
+  unsaveBlog,
 } from "../controllers/blogs.controller";
 import upload from "../../middleware/upload";
 const router = Router();
