@@ -434,7 +434,7 @@ export const updateBlog = async (req: AuthenticatedRequest, res: Response) => {
             url,
             urlForDeletion: public_id[index],
             mediaType: mediaType[index],
-            createdAt: new Date(),
+            createdAt: new Date(),	
             updatedAt: new Date(),
           }))
         )
