@@ -10,6 +10,7 @@ const router = Router();
 
 // Add your route handlers here
 router.get("/", getAllUsers);
+
 router.get("/admins", getAllAdmins);
 router.post("/admins", createAdmin);
 router.put("/admins/:id", updateAdmin);

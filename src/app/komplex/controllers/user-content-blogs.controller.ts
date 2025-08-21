@@ -97,12 +97,6 @@ export const getBlogById = async (req: Request, res: Response) => {
         .json({ success: false, message: "Blog not found" });
     }
 
-    // Increment view count
-    await db
-      .update(blogs)
-      .set({ viewCount: (blog[0]?.viewCount ?? 0) + 1, updatedAt: new Date() })
-      .where(eq(blogs.id, Number(id)));
-
     const blogWithMedia = {
       id: blog[0].id,
       userId: blog[0].userId,

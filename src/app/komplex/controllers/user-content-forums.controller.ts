@@ -29,7 +29,7 @@ export const getAllForums = async (
 ) => {
   try {
     const { type, topic } = req.query;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user ?? { userId: 1 }; //! TO CHANGE
     const conditions = [];
     if (type) conditions.push(eq(forums.type, type as string));
     if (topic) conditions.push(eq(forums.topic, topic as string));
@@ -63,6 +63,22 @@ export const getAllForums = async (
       )
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
+    const likesCount = await db
+      .select({
+        id: forumLikes.id,
+        forumId: forumLikes.forumId,
+        userId: forumLikes.userId,
+      })
+      .from(forumLikes);
+
+    const commentsCount = await db
+      .select({
+        id: forumComments.id,
+        forumId: forumComments.forumId,
+        userId: forumComments.userId,
+      })
+      .from(forumComments);
+
     const forumsWithMedia = Object.values(
       forumRecords.reduce((acc, forum) => {
         if (!acc[forum.id]) {
@@ -74,6 +90,11 @@ export const getAllForums = async (
             type: forum.type,
             topic: forum.topic,
             viewCount: forum.viewCount,
+            likeCount: likesCount.filter((like) => like.forumId === forum.id)
+              .length,
+            commentCount: commentsCount.filter(
+              (comment) => comment.forumId === forum.id
+            ).length,
             createdAt: forum.createdAt,
             updatedAt: forum.updatedAt,
             media: [] as { url: string; type: string }[],
@@ -142,15 +163,6 @@ export const getForumById = async (
         .json({ success: false, message: "Forum not found" });
     }
 
-    // Increment view count
-    await db
-      .update(forums)
-      .set({
-        viewCount: (forumRecords[0]?.viewCount ?? 0) + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(forums.id, Number(id)));
-
     const forumWithMedia = {
       id: forumRecords[0].id,
       userId: forumRecords[0].userId,
@@ -206,7 +218,7 @@ export const postForum = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const { userId } = req.user ?? { userId: 1 };
-    const { title, description, type, topic } = req.body;
+    const { title, description } = req.body;
 
     if (!userId || !title || !description) {
       return res
@@ -221,8 +233,6 @@ export const postForum = async (req: AuthenticatedRequest, res: Response) => {
         userId: Number(userId),
         title,
         description,
-        type,
-        topic,
         viewCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -334,7 +344,7 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.user ?? { userId: "1" };
     const { id } = req.params;
-    const { title, description, type, topic, photosToRemove } = req.body;
+    const { title, description, photosToRemove } = req.body;
 
     let photosToRemoveParse: { url: string }[] = [];
     if (photosToRemove) {
@@ -418,8 +428,6 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
       .set({
         title,
         description,
-        type,
-        topic,
         updatedAt: new Date(),
       })
       .where(eq(forums.id, Number(id)))

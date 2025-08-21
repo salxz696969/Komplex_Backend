@@ -246,14 +246,14 @@ export const getDashboardData = async (req: Request, res: Response) => {
       .select({
         score: userExerciseHistory.score,
         exerciseId: userExerciseHistory.exerciseId,
-        completedAt: userExerciseHistory.completedAt,
+        createdAt: userExerciseHistory.createdAt,
       })
       .from(userExerciseHistory)
-      .orderBy(sql`${userExerciseHistory.completedAt} DESC`)
+      .orderBy(sql`${userExerciseHistory.createdAt} DESC`)
       .limit(3);
 
     recentExerciseCompletions.forEach((completion) => {
-      if (completion.completedAt) {
+      if (completion.createdAt) {
         recentActivities.push({
           type: "exercise_completed",
           description: `Exercise ${completion.exerciseId} completed (Score: ${completion.score})`,

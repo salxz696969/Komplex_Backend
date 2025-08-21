@@ -1,13 +1,13 @@
 import { Router } from "express";
 import upload from "../../middleware/upload";
 import {
-	deleteForum,
-	getAllForums,
-	getForumById,
-	likeForum,
-	postForum,
-	unlikeForum,
-	updateForum,
+  deleteForum,
+  getAllForums,
+  getForumById,
+  likeForum,
+  postForum,
+  unlikeForum,
+  updateForum,
 } from "../controllers/forums.controller";
 const router = Router();
 
