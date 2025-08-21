@@ -21,12 +21,13 @@ import { videoComments } from "../../../db/models/video_comments";
 import { videoLikes } from "../../../db/models/video_likes";
 import { videoReplies } from "../../../db/models/video_replies";
 import { videos } from "../../../db/models/videos";
-import { uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
 import { blogMedia } from "../../../db/models/blog_media";
 import { mediaTypeEnum } from "../../../db/schema";
 import { PgEnum } from "drizzle-orm/pg-core";
 import { and, eq } from "drizzle-orm";
 import { deleteReply } from "../controllers/forum_replies.controller";
+import fs from "fs";
 
 const router = Router();
 
@@ -198,6 +199,44 @@ router.delete("/delete-reply", async (req, res) => {
 
 router.get("/ping", (req, res) => {
 	res.json({ message: "pong" });
+});
+
+router.post("/upload-video", upload.single("file"), async (req, res) => {
+	try {
+		if (req.file) {
+			if (!req.file.mimetype.startsWith("video")) {
+				throw new Error("Only video files are allowed.");
+			}
+			const result = await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto");
+			const secure_url = (result as { secure_url: string }).secure_url;
+			const public_id = (result as { public_id: string }).public_id;
+			const duration = (result as { duration?: number }).duration ?? 0;
+			const thumbnail_url = (result as { thumbnail_url?: string }).thumbnail_url ?? "";
+			return res.json({
+				success: true,
+				secure_url,
+				public_id,
+				duration,
+				thumbnail_url,
+			});
+		} else {
+			return res.status(400).json({ success: false, message: "No video file uploaded." });
+		}
+	} catch (err) {
+		res.status(500).json({ success: false, error: (err as Error).message });
+	}
+});
+
+router.delete("/delete-video", async (req, res) => {
+	const publicId = "my_app_uploads/ukswwa5f2fmyjk0engbs";
+
+	try {
+		const result = await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+		res.json({ success: true, message: "Photo deleted successfully", result });
+	} catch (err: any) {
+		console.error(err);
+		res.status(500).json({ success: false, error: err.message });
+	}
 });
 
 export default router;
