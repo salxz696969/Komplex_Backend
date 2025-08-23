@@ -15,9 +15,14 @@ import { deleteForum } from "../controllers/forums.controller";
 import {
   getExerciseDashboard,
   getExerciseHistory,
+  getExercises,
+  getExerciseById,
 } from "../controllers/user-content-exercises.controller";
+import { getUserContentDashboard } from "../controllers/user-content-dashboard.controller";
 
 const router = Router();
+
+router.get("/dashboard", getUserContentDashboard);
 
 router.get("/blogs", getAllUserBlogs);
 router.get("/blogs/:id", getBlogById);
@@ -33,5 +38,7 @@ router.delete("/forums/:id", deleteForum);
 // router.get("/exercises/scores", getExerciseScores);
 router.get("/exercises/history", getExerciseHistory);
 router.get("/exercises/dashboard", getExerciseDashboard);
+router.get("/exercises", getExercises);
+router.get("/exercises/:id", getExerciseById);
 
 export default router;

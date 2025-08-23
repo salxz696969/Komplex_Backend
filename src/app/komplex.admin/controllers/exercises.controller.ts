@@ -261,3 +261,51 @@ export const getExerciseDashboard = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal server error" + error });
   }
 };
+
+export const updateExercise = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { duration, title, description, subject, grade, exerciseQuestions } =
+      req.body;
+
+    const exercise = await db
+      .update(exercises)
+      .set({ duration, title, description, subject, grade })
+      .where(eq(exercises.id, parseInt(id)));
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found" });
+    }
+
+    for (let question of exerciseQuestions) {
+      await db
+        .update(questions)
+        .set({
+          title: question.title,
+          questionType: question.questionType,
+          section: question.section,
+          imageUrl: question.imageUrl,
+        })
+        .where(eq(questions.id, parseInt(question.id)));
+
+      for (let choice of question.choices) {
+        console.log("choice", choice);
+        console.log("question.id", question.id);
+        console.log("choice.id", choice.id);
+
+        await db
+          .update(choices)
+          .set({
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+          })
+          .where(eq(choices.id, parseInt(choice.id)));
+      }
+    }
+
+    res.status(200).json({ message: "Exercise updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" + error });
+    console.error("Update exercise error:", error);
+  }
+};
