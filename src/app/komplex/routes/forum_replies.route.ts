@@ -13,8 +13,8 @@ const router = Router();
 // Add your route handlers here
 router.get("/:id", getAllRepliesForAComment);
 router.post("/:id", upload.any(), postForumReply);
-router.post("/:id/like", likeForumCommentReply);
-router.delete("/:id/unlike", unlikeForumCommentReply);
+router.patch("/:id/like", likeForumCommentReply);
+router.patch("/:id/unlike", unlikeForumCommentReply);
 router.patch("/:id", upload.any(), updateForumReply);
 router.delete("/:id", deleteForumReply);
 

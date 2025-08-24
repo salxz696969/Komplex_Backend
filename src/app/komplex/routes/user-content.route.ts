@@ -41,8 +41,8 @@ router.delete("/blogs/:id", deleteBlog);
 router.get("/forums", getAllForums);
 router.get("/forums/:id", getForumById);
 router.post("/forums", postForum);
-router.post("/forums/:id/like", likeForum);
-router.post("/forums/:id/unlike", unlikeForum);
+router.patch("/forums/:id/like", likeForum);
+router.patch("/forums/:id/unlike", unlikeForum);
 router.put("/forums/:id", updateForum);
 router.delete("/forums/:id", deleteForum);
 
