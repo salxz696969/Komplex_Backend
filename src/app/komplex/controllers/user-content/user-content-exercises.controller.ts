@@ -1,11 +1,11 @@
-import { questions } from "../../../db/models/questions";
+import { questions } from "../../../../db/models/questions";
 import { Request, Response } from "express";
-import { db } from "../../../db";
+import { db } from "../../../../db";
 import {
   exerciseQuestionHistory,
   exercises,
   userExerciseHistory,
-} from "../../../db/schema";
+} from "../../../../db/schema";
 import {
   and,
   avg,

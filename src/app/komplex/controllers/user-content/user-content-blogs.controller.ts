@@ -1,10 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
-import { blogs, users, userSavedBlogs } from "../../../db/schema";
-import { db } from "../../../db";
+import { blogs, users, userSavedBlogs } from "../../../../db/schema";
+import { db } from "../../../../db";
 import { Request, Response } from "express";
-import { blogMedia } from "../../../db/models/blog_media";
-import { AuthenticatedRequest } from "../../../types/request";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
+import { blogMedia } from "../../../../db/models/blog_media";
+import { AuthenticatedRequest } from "../../../../types/request";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../../../../db/cloudinary/cloundinaryFunction";
 
 export const getAllUserBlogs = async (req: Request, res: Response) => {
   try {
@@ -484,4 +487,3 @@ export const deleteBlog = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 };
-

@@ -6,15 +6,15 @@ import {
   forumReplies,
   forums,
   users,
-} from "../../../db/schema";
-import { db } from "../../../db/index";
+} from "../../../../db/schema";
+import { db } from "../../../../db/index";
 import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction";
-import { deleteReply } from "./forum_replies.controller";
-import { deleteComment } from "./forum_comments.controller";
+} from "../../../../db/cloudinary/cloundinaryFunction";
+import { deleteReply } from "../forum_replies.controller";
+import { deleteComment } from "../forum_comments.controller";
 
 interface AuthenticatedRequest extends Request {
   user?: {
