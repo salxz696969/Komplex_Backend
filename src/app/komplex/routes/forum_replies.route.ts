@@ -7,15 +7,15 @@ import {
 	updateForumReply,
 	deleteForumReply,
 } from "../controllers/forum_replies.controller";
-import upload from "../../middleware/upload";
+import { uploadImages } from "../../middleware/upload";
 const router = Router();
 
 // Add your route handlers here
 router.get("/:id", getAllRepliesForAComment);
-router.post("/:id", upload.any(), postForumReply);
+router.post("/:id", uploadImages.array("images", 4), postForumReply);
 router.post("/:id/like", likeForumCommentReply);
 router.delete("/:id/unlike", unlikeForumCommentReply);
-router.patch("/:id", upload.any(), updateForumReply);
+router.patch("/:id", uploadImages.array("images", 4), updateForumReply);
 router.delete("/:id", deleteForumReply);
 
 export default router;

@@ -4,7 +4,7 @@ import { db } from "../../../db";
 import { users, videoReplies } from "../../../db/schema";
 import { videoReplyMedias } from "../../../db/models/video_reply_medias";
 import { videoReplyLike } from "../../../db/models/video_reply_like";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
+import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
 
 interface AuthenticatedRequest extends Request {
 	user?: {
@@ -79,80 +79,61 @@ export const getAllVideoRepliesForAComment = async (req: AuthenticatedRequest, r
 };
 
 export const postForumVideoReply = async (req: AuthenticatedRequest, res: Response) => {
-	let public_id: string[] = [];
-	let secure_url: string[] = [];
-	let mediaType: ("image" | "video")[] = [];
+    try {
+        const { userId } = req.user ?? { userId: 1 };
+        const { description } = req.body;
+        const { id } = req.params;
 
-	try {
-		if (Array.isArray(req.files) && req.files.length > 0) {
-			const files = req.files as Express.Multer.File[];
-			const uploadResults = await Promise.all(
-				files.map((file) => uploadToCloudinary(file.buffer, "my_app_uploads", "auto"))
-			);
-			uploadResults.forEach((result, index) => {
-				secure_url.push((result as { secure_url: string }).secure_url);
-				public_id.push((result as { public_id: string }).public_id);
-				mediaType.push(files[index].mimetype.startsWith("video") ? "video" : "image");
-			});
-		}
+        if (!userId || !id || !description) {
+            return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
 
-		const { userId } = req.user ?? { userId: 1 };
-		const { description } = req.body;
-		const { id } = req.params;
+        const [insertReply] = await db
+            .insert(videoReplies)
+            .values({
+                userId: Number(userId),
+                videoCommentId: Number(id),
+                description,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })
+            .returning();
 
-		if (!userId || !id || !description) {
-			return res.status(400).json({ success: false, message: "Missing required fields" });
-		}
+        let newVideoReplyMedia: any[] = [];
+        if (req.files) {
+            for (const file of req.files as Express.Multer.File[]) {
+                try {
+                    const uniqueKey = `${insertReply.id}-${crypto.randomUUID()}-${file.originalname}`;
+                    const url = await uploadVideoToCloudflare(uniqueKey, file.buffer, file.mimetype);
+                    const [media] = await db
+                        .insert(videoReplyMedias)
+                        .values({
+                            videoReplyId: insertReply.id,
+                            url: url,
+                            urlForDeletion: uniqueKey,
+                            mediaType: file.mimetype.startsWith("video") ? "video" : "image",
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        })
+                        .returning();
+                    newVideoReplyMedia.push(media);
+                } catch (error) {
+                    console.error("Error uploading file or saving media:", error);
+                }
+            }
+        }
 
-		const insertReply = await db
-			.insert(videoReplies)
-			.values({
-				userId: Number(userId),
-				videoCommentId: Number(id),
-				description,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.returning();
-
-		let newVideoReplyMedia = null;
-		if (public_id.length > 0 && mediaType.length > 0) {
-			const values = [];
-			for (let i = 0; i < public_id.length; i++) {
-				values.push({
-					userId: Number(userId),
-					videoReplyId: insertReply[0].id,
-					url: secure_url[i],
-					urlForDeletion: public_id[i],
-					mediaType: mediaType[i],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				});
-			}
-			newVideoReplyMedia = await db.insert(videoReplyMedias).values(values).returning();
-		}
-
-		return res.status(201).json({
-			success: true,
-			reply: insertReply[0],
-			newVideoReplyMedia,
-			mediaType,
-		});
-	} catch (error) {
-		if (public_id.length > 0 && mediaType.length > 0) {
-			try {
-				await Promise.all(
-					public_id.map((id, index) => deleteFromCloudinary(secure_url[index], mediaType[index]))
-				);
-			} catch (err) {
-				console.error("Failed to delete uploaded media:", err);
-			}
-		}
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.status(201).json({
+            success: true,
+            reply: insertReply,
+            newVideoReplyMedia,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const likeForumVideoReply = async (req: AuthenticatedRequest, res: Response) => {
@@ -207,104 +188,97 @@ export const unlikeForumVideoReply = async (req: AuthenticatedRequest, res: Resp
 };
 
 export const updateForumVideoReply = async (req: AuthenticatedRequest, res: Response) => {
-	let public_id: string[] = [];
-	let secure_url: string[] = [];
-	let mediaType: ("image" | "video")[] = [];
-	try {
-		const { userId } = req.user ?? { userId: "1" };
-		const { id } = req.params;
-		const { description, videosToRemove } = req.body;
+    try {
+        const { userId } = req.user ?? { userId: "1" };
+        const { id } = req.params;
+        const { description, videosToRemove } = req.body;
 
-		// Parse videosToRemove if it's a JSON string
-		const doesUserOwnThisVideoReply = await db
-			.select()
-			.from(videoReplies)
-			.where(and(eq(videoReplies.id, Number(id)), eq(videoReplies.userId, Number(userId))))
-			.limit(1);
+        const [doesUserOwnThisReply] = await db
+            .select()
+            .from(videoReplies)
+            .where(and(eq(videoReplies.id, Number(id)), eq(videoReplies.userId, Number(userId))))
+            .limit(1);
 
-		if (doesUserOwnThisVideoReply.length === 0) {
-			return res.status(404).json({ success: false, message: "Video reply not found" });
-		}
+        if (!doesUserOwnThisReply) {
+            return res.status(404).json({ success: false, message: "Video reply not found" });
+        }
 
-		let videosToRemoveParse: { url: string }[] = [];
-		if (videosToRemove) {
-			try {
-				videosToRemoveParse = typeof videosToRemove === "string" ? JSON.parse(videosToRemove) : videosToRemove;
-			} catch (err) {
-				return res.status(400).json({ success: false, message: "Invalid videosToRemove format" });
-			}
-		}
+        let videosToRemoveParse: { url: string }[] = [];
+        if (videosToRemove) {
+            try {
+                videosToRemoveParse = typeof videosToRemove === "string" ? JSON.parse(videosToRemove) : videosToRemove;
+            } catch (err) {
+                return res.status(400).json({ success: false, message: "Invalid videosToRemove format" });
+            }
+        }
 
-		// Handle new uploads
-		if (Array.isArray(req.files) && req.files.length > 0) {
-			const files = req.files as Express.Multer.File[];
-			const uploadResults = await Promise.all(
-				files.map((file) => uploadToCloudinary(file.buffer, "my_app_uploads", "auto"))
-			);
-			uploadResults.forEach((result, index) => {
-				secure_url.push((result as { secure_url: string }).secure_url);
-				public_id.push((result as { public_id: string }).public_id);
-				mediaType.push(files[index].mimetype.startsWith("video") ? "video" : "image");
-			});
-		}
+        let newVideoReplyMedia: any[] = [];
+        if (req.files) {
+            for (const file of req.files as Express.Multer.File[]) {
+                try {
+                    const uniqueKey = `${id}-${crypto.randomUUID()}-${file.originalname}`;
+                    const url = await uploadVideoToCloudflare(uniqueKey, file.buffer, file.mimetype);
+                    const [media] = await db
+                        .insert(videoReplyMedias)
+                        .values({
+                            videoReplyId: Number(id),
+                            url: url,
+                            urlForDeletion: uniqueKey,
+                            mediaType: file.mimetype.startsWith("video") ? "video" : "image",
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        })
+                        .returning();
+                    newVideoReplyMedia.push(media);
+                } catch (error) {
+                    console.error("Error uploading file or saving media:", error);
+                }
+            }
+        }
 
-		// Check ownership
+        let deleteMedia = null;
+        if (videosToRemoveParse && videosToRemoveParse.length > 0) {
+            const deleteResults = await Promise.all(
+                videosToRemoveParse.map(async (mediaToRemove: any) => {
+                    const [urlForDeletion] = await db
+                        .select({ urlForDeletion: videoReplyMedias.urlForDeletion })
+                        .from(videoReplyMedias)
+                        .where(eq(videoReplyMedias.url, mediaToRemove.url));
+                    let deleted = null;
+                    if (urlForDeletion) {
+						await deleteFromCloudflare("komplex-image", urlForDeletion.urlForDeletion ?? "");
+                        deleted = await db
+                            .delete(videoReplyMedias)
+                            .where(
+                                and(
+									eq(videoReplyMedias.videoReplyId, Number(id)),
+									eq(videoReplyMedias.urlForDeletion, urlForDeletion.urlForDeletion ?? "")
+                                )
+                            )
+                            .returning();
+                    }
+                    return deleted;
+                })
+            );
+            deleteMedia = deleteResults.flat();
+        }
 
-		// Remove media from Cloudinary and DB
-		let deleteMedia = null;
-		if (videosToRemoveParse && videosToRemoveParse.length > 0) {
-			const deleteResults = await Promise.all(
-				videosToRemoveParse.map(async (mediaToRemove) => {
-					await deleteFromCloudinary(mediaToRemove.url ?? "", undefined);
-					const deleted = await db
-						.delete(videoReplyMedias)
-						.where(
-							and(
-								eq(videoReplyMedias.videoReplyId, Number(id)),
-								eq(videoReplyMedias.urlForDeletion, mediaToRemove.url)
-							)
-						)
-						.returning();
-					return deleted;
-				})
-			);
-			deleteMedia = deleteResults.flat();
-		}
+        const [updateReply] = await db
+            .update(videoReplies)
+            .set({
+                description,
+                updatedAt: new Date(),
+            })
+            .where(eq(videoReplies.id, Number(id)))
+            .returning();
 
-		// Add new media if provided
-		let newVideoReplyMedia = null;
-		if (secure_url.length > 0) {
-			const values = [];
-			for (let i = 0; i < secure_url.length; i++) {
-				values.push({
-					videoReplyId: Number(id),
-					url: secure_url[i],
-					urlForDeletion: public_id[i],
-					mediaType: mediaType[i],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				});
-			}
-			newVideoReplyMedia = await db.insert(videoReplyMedias).values(values).returning();
-		}
-
-		// Update reply description
-		const updateVideoReply = await db
-			.update(videoReplies)
-			.set({
-				description,
-				updatedAt: new Date(),
-			})
-			.where(eq(videoReplies.id, Number(id)))
-			.returning();
-
-		return res.status(200).json({ updateVideoReply, newVideoReplyMedia, deleteMedia });
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.status(200).json({ updateReply, newVideoReplyMedia, deleteMedia });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const deleteForumVideoReply = async (req: AuthenticatedRequest, res: Response) => {
@@ -312,13 +286,13 @@ export const deleteForumVideoReply = async (req: AuthenticatedRequest, res: Resp
 		const { userId } = req.user ?? { userId: "1" };
 		const { id } = req.params;
 
-		const replyRecord = await db
+		const [doesUserOwnThisReply] = await db
 			.select()
 			.from(videoReplies)
 			.where(and(eq(videoReplies.id, Number(id)), eq(videoReplies.userId, Number(userId))))
 			.limit(1);
 
-		if (replyRecord.length === 0) {
+		if (!doesUserOwnThisReply) {
 			return res.status(404).json({ success: false, message: "Video reply not found" });
 		}
 		const result = await deleteVideoReply(Number(userId), Number(id), null);
@@ -342,13 +316,22 @@ export const deleteVideoReply = async (userId: number, videoReplyId: number | nu
 	}
 
 	if (videoReplyId && commentId === null) {
+		// First, select media to get urlForDeletion
+		const mediaToDelete = await db
+			.select({ urlForDeletion: videoReplyMedias.urlForDeletion})
+			.from(videoReplyMedias)
+			.where(eq(videoReplyMedias.videoReplyId, videoReplyId));
+
+		// Delete from Cloudflare first
+		for (const media of mediaToDelete) {
+			await deleteFromCloudflare("komplex-image", media.urlForDeletion ?? "");
+		}
+
+		// Then delete from DB
 		const deletedMedia = await db
 			.delete(videoReplyMedias)
 			.where(eq(videoReplyMedias.videoReplyId, videoReplyId))
 			.returning({ url: videoReplyMedias.url, mediaType: videoReplyMedias.mediaType });
-		for (const media of deletedMedia) {
-			await deleteFromCloudinary(media.url ?? "", media.mediaType ?? undefined);
-		}
 		const deleteLikeReply = await db
 			.delete(videoReplyLike)
 			.where(eq(videoReplyLike.videoReplyId, videoReplyId))
@@ -366,6 +349,22 @@ export const deleteVideoReply = async (userId: number, videoReplyId: number | nu
 			.from(videoReplies)
 			.where(eq(videoReplies.videoCommentId, commentId));
 		const videoReplyIds = getVideoReplyIdByCommentId.map((r) => r.id);
+		// First, select media to get urlForDeletion
+		const mediaToDelete = await db
+			.select({ urlForDeletion: videoReplyMedias.urlForDeletion })
+			.from(videoReplyMedias)
+			.where(
+				videoReplyIds.length > 0
+					? inArray(videoReplyMedias.videoReplyId, videoReplyIds)
+					: eq(videoReplyMedias.videoReplyId, -1)
+			);
+
+		// Delete from Cloudflare first
+		for (const media of mediaToDelete) {
+			await deleteFromCloudflare("komplex-image", media.urlForDeletion ?? "");
+		}
+
+		// Then delete from DB
 		const deletedMedia = await db
 			.delete(videoReplyMedias)
 			.where(
@@ -374,9 +373,6 @@ export const deleteVideoReply = async (userId: number, videoReplyId: number | nu
 					: eq(videoReplyMedias.videoReplyId, -1)
 			)
 			.returning({ url: videoReplyMedias.url, mediaType: videoReplyMedias.mediaType });
-		for (const media of deletedMedia) {
-			await deleteFromCloudinary(media.url ?? "", media.mediaType ?? undefined);
-		}
 		const deleteLikeReply = await db
 			.delete(videoReplyLike)
 			.where(

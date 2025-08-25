@@ -1,14 +1,15 @@
 import { Router } from "express";
 import {
-  postBlog,
-  getAllBlogs,
-  getBlogById,
-  saveBlog,
-  updateBlog,
-  deleteBlog,
-  unsaveBlog,
+	postBlog,
+	getAllBlogs,
+	getBlogById,
+	saveBlog,
+	updateBlog,
+	deleteBlog,
+	unsaveBlog,
 } from "../controllers/blogs.controller";
-import upload from "../../middleware/upload";
+import { uploadImages } from "../../middleware/upload";
+
 const router = Router();
 
 // Get all blogs
@@ -18,14 +19,14 @@ router.get("/", getAllBlogs);
 router.get("/:id", getBlogById);
 
 // Create a new blog
-router.post("/", upload.any(), postBlog);
+router.post("/", uploadImages.array("images", 4), postBlog);
 
 // Save a blog
 router.post("/:id/save", saveBlog);
 router.delete("/:id/unsave", unsaveBlog);
 
 // Update a blog
-router.patch("/:id", upload.any(), updateBlog);
+router.patch("/:id", uploadImages.array("images", 4), updateBlog);
 
 // Delete a blog
 router.delete("/:id", deleteBlog);

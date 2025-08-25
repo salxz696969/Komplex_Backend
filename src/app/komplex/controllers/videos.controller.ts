@@ -2,9 +2,14 @@ import { Request, Response } from "express";
 import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
 import { db } from "../../../db";
 import { blogs, users, userSavedBlogs, userSavedVideos, videoComments, videoLikes, videos } from "../../../db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, desc } from "drizzle-orm";
 import { deleteVideoCommentInternal } from "./video_comments.controller";
-
+import {
+	deleteFromCloudflare,
+	uploadImageToCloudflare,
+	uploadVideoToCloudflare,
+} from "../../../db/cloudflare/cloudflareFunction";
+import fs from "fs";
 interface AuthenticatedRequest extends Request {
 	user?: {
 		userId: string;
@@ -13,59 +18,51 @@ interface AuthenticatedRequest extends Request {
 }
 
 export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
-	let secure_url = "";
-	let public_id = "";
-	let thumbnail_url = "";
-	let duration = 0;
-	let mediaType = "video";
+	let videoFile: Express.Multer.File | undefined;
+	let thumbnailFile: Express.Multer.File | undefined;
 
 	try {
-		if (req.file) {
-			if (!req.file.mimetype.startsWith("video")) {
-				throw new Error("Only video files are allowed.");
-			}
-			const result = await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto");
-			secure_url = (result as { secure_url: string }).secure_url;
-			public_id = (result as { public_id: string }).public_id;
-			duration = (result as { duration?: number }).duration ?? 0;
-			thumbnail_url = (result as { thumbnail_url?: string }).thumbnail_url ?? "don't have one";
-		} else {
-			return res.status(400).json({ success: false, message: "No video file uploaded." });
-		}
-
 		const userId = req.user?.userId ?? "1";
 		const { title, description, topic, type } = req.body;
+
 		if (!title || !description || !topic || !type) {
 			return res.status(400).json({ success: false, message: "Missing required fields" });
 		}
 
-		console.log({
-			urlForDeletion: public_id,
-			videoUrl: secure_url,
-			title,
-			description,
-			duration: Math.floor(duration),
-			topic,
-			type,
-			viewCount: 0,
-			thumbnailUrl: thumbnail_url,
-			userId: Number(userId),
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
+		if (req.files && typeof req.files === "object" && "video" in req.files && "image" in req.files) {
+			videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).video[0];
+			thumbnailFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).image[0];
+		} else {
+			return res.status(400).json({ error: "Files not uploaded correctly" });
+		}
+
+		const uniqueKey = `${videoFile.filename}-${crypto.randomUUID()}-${thumbnailFile.filename}`;
+
+		const videoUrl = await uploadVideoToCloudflare(
+			uniqueKey,
+			await fs.promises.readFile(videoFile.path),
+			videoFile.mimetype
+		);
+
+		const thumbnailUrl = await uploadImageToCloudflare(
+			uniqueKey,
+			await fs.promises.readFile(thumbnailFile.path),
+			thumbnailFile.mimetype
+		);
 
 		const newVideo = await db
 			.insert(videos)
 			.values({
-				urlForDeletion: public_id,
-				videoUrl: secure_url,
+				videoUrlForDeletion: uniqueKey,
+				videoUrl,
 				title,
 				description,
-				duration: Math.floor(duration),
+				duration: 100,
 				topic,
 				type,
 				viewCount: 0,
-				thumbnailUrl: thumbnail_url,
+				thumbnailUrl,
+				thumbnailUrlForDeletion: uniqueKey,
 				userId: Number(userId),
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -74,14 +71,11 @@ export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
 
 		return res.status(201).json({ success: true, video: newVideo });
 	} catch (error) {
-		if (public_id) {
-			try {
-				await deleteFromCloudinary(public_id, "video");
-			} catch (err) {
-				console.error("Failed to delete uploaded video:", err);
-			}
-		}
+		console.error("Error uploading file or saving media:", error);
 		return res.status(500).json({ success: false, error: (error as Error).message });
+	} finally {
+		if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
+		if (thumbnailFile) await fs.promises.unlink(thumbnailFile.path).catch(() => {});
 	}
 };
 
@@ -102,7 +96,8 @@ export const getAllVideos = async (req: AuthenticatedRequest, res: Response) => 
 				duration: videos.duration,
 				videoUrl: videos.videoUrl,
 				thumbnailUrl: videos.thumbnailUrl,
-				urlForDeletion: videos.urlForDeletion,
+				videoUrlForDeletion: videos.videoUrlForDeletion,
+				thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion,
 				viewCount: videos.viewCount,
 				createdAt: videos.createdAt,
 				updatedAt: videos.updatedAt,
@@ -143,7 +138,7 @@ export const getVideoById = async (req: AuthenticatedRequest, res: Response) => 
 			return res.status(400).json({ success: false, message: "Missing video id" });
 		}
 
-		const videoRow = await db
+		const [videoRow] = await db
 			.select({
 				id: videos.id,
 				userId: videos.userId,
@@ -152,7 +147,8 @@ export const getVideoById = async (req: AuthenticatedRequest, res: Response) => 
 				duration: videos.duration,
 				videoUrl: videos.videoUrl,
 				thumbnailUrl: videos.thumbnailUrl,
-				urlForDeletion: videos.urlForDeletion,
+				videoUrlForDeletion: videos.videoUrlForDeletion,
+				thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion,
 				viewCount: videos.viewCount,
 				createdAt: videos.createdAt,
 				updatedAt: videos.updatedAt,
@@ -180,11 +176,11 @@ export const getVideoById = async (req: AuthenticatedRequest, res: Response) => 
 				videoLikes.id
 			);
 
-		if (!videoRow || videoRow.length === 0) {
+		if (!videoRow) {
 			return res.status(404).json({ success: false, message: "Video not found" });
 		}
 
-		return res.status(200).json({ video: videoRow[0] });
+		return res.status(200).json({ video: videoRow });
 	} catch (error) {}
 };
 
@@ -299,78 +295,110 @@ export const unsaveVideo = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const updateVideo = async (req: AuthenticatedRequest, res: Response) => {
+	let videoFile: Express.Multer.File | undefined;
+	let thumbnailFile: Express.Multer.File | undefined;
+
 	try {
 		const { userId } = req.user ?? { userId: "1" };
 		const { id } = req.params;
-		const { title, description, type, topic, photosToRemove, secure_url, public_id } = req.body;
-		console.log("Request body:", {
-			title,
-			description,
-			type,
-			topic,
-			photosToRemove,
-		});
+		const { title, description, type, topic } = req.body;
 
-		// ! removed parsing because already array
-
-		let photosToRemoveParse: { url: string }[] = [];
-		if (photosToRemove) {
-			try {
-				photosToRemoveParse = JSON.parse(photosToRemove);
-				console.log("Photos to remove:", photosToRemoveParse);
-			} catch (err) {
-				console.error("Error parsing photosToRemove:", err);
-				return res.status(400).json({ success: false, message: "Invalid photosToRemove format" });
-			}
+		if (!id || !title || !description || !type || !topic) {
+			return res.status(400).json({ success: false, message: "Missing required fields" });
 		}
 
-		console.log("Checking video ownership...");
-		const doesUserOwnThisVideo = await db
+		const [doesUserOwnThisVideo] = await db
 			.select()
 			.from(videos)
 			.where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
 			.limit(1);
-		if (doesUserOwnThisVideo.length === 0) {
-			console.log("Video not found or user does not own video");
+
+		if (!doesUserOwnThisVideo) {
 			return res.status(404).json({ success: false, message: "Video not found" });
 		}
 
-		if (photosToRemove) {
-			try {
-				for (const photo of photosToRemove) {
-					await deleteFromCloudinary(photo.url);
-				}
-			} catch (error) {
-				console.error("Error deleting photos from Cloudinary:", error);
-				return res.status(500).json({ success: false, error: (error as Error).message });
-			}
+		if (req.files && typeof req.files === "object" && "video" in req.files && "image" in req.files) {
+			videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).video[0];
+			thumbnailFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).image[0];
 		}
 
-		console.log("Updating video content...");
+		const uniqueKey =
+			videoFile && thumbnailFile
+				? `${videoFile.filename}-${crypto.randomUUID()}-${thumbnailFile.filename}`
+				: crypto.randomUUID();
+
+		let newVideoUrl: string | null = null;
+		if (videoFile) {
+			const [videoUrlForDeletionForThisVideo] = await db
+				.select({ videoUrlForDeletion: videos.videoUrlForDeletion })
+				.from(videos)
+				.where(eq(videos.id, Number(id)))
+				.limit(1);
+
+			await deleteFromCloudflare("komplex-video", videoUrlForDeletionForThisVideo.videoUrlForDeletion ?? "");
+			newVideoUrl = await uploadVideoToCloudflare(
+				uniqueKey,
+				await fs.promises.readFile(videoFile.path),
+				videoFile.mimetype
+			);
+		}
+
+		let newThumbnailUrl: string | null = null;
+		if (thumbnailFile) {
+			const [thumbnailUrlForDeletionForThisVideo] = await db
+				.select({ thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion })
+				.from(videos)
+				.where(eq(videos.id, Number(id)))
+				.limit(1);
+
+			await deleteFromCloudflare(
+				"komplex-video",
+				thumbnailUrlForDeletionForThisVideo.thumbnailUrlForDeletion ?? ""
+			);
+			newThumbnailUrl = await uploadImageToCloudflare(
+				uniqueKey,
+				await fs.promises.readFile(thumbnailFile.path),
+				thumbnailFile.mimetype
+			);
+		}
+
+		const updateData: Partial<typeof videos.$inferInsert> = {
+			title,
+			description,
+			type,
+			topic,
+			updatedAt: new Date(),
+		};
+
+		if (newVideoUrl) {
+			updateData.videoUrl = newVideoUrl;
+			updateData.videoUrlForDeletion = uniqueKey;
+		}
+
+		if (newThumbnailUrl) {
+			updateData.thumbnailUrl = newThumbnailUrl;
+			updateData.thumbnailUrlForDeletion = uniqueKey;
+		}
+
 		const updateVideo = await db
 			.update(videos)
-			.set({
-				title,
-				description,
-				type,
-				topic,
-				videoUrl: secure_url,
-				urlForDeletion: public_id,
-				updatedAt: new Date(),
-			})
+			.set(updateData)
 			.where(eq(videos.id, Number(id)))
 			.returning();
-		console.log("Video updated:", updateVideo);
 
-		return res.status(200).json({ updateVideo });
+		return res.status(200).json({ success: true, updateVideo });
 	} catch (error) {
-		console.error("Error updating video:", error);
 		return res.status(500).json({
 			success: false,
 			error: (error as Error).message,
 		});
+	} finally {
+		// cleanup temp files
+		if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
+		if (thumbnailFile) await fs.promises.unlink(thumbnailFile.path).catch(() => {});
 	}
 };
+
 
 export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
 	try {
@@ -378,24 +406,26 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
 		const { id } = req.params;
 
 		// Check ownership
-		const videoRecord = await db
-			.select()
+		const [doesThisUserOwnThisVideo] = await db
+			.select({
+				videoUrlForDeletion: videos.videoUrlForDeletion,
+				thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion,
+			})
 			.from(videos)
-			.where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
-			.limit(1);
+			.where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))));
 
-		if (!videoRecord || videoRecord.length === 0) {
+		if (!doesThisUserOwnThisVideo) {
 			return res.status(404).json({ success: false, message: "Video not found or unauthorized" });
 		}
 
-		const doesThisVideoHasComments = await db
+		const [doesThisVideoHasComments] = await db
 			.select()
 			.from(videoComments)
 			.where(eq(videoComments.videoId, Number(id)))
 			.limit(1);
 
-			let deleteComments = null;
-		if(doesThisVideoHasComments.length > 0) {
+		let deleteComments = null;
+		if (doesThisVideoHasComments) {
 			// If the video has comments, we need to delete them as well
 			deleteComments = await deleteVideoCommentInternal(Number(userId), null, Number(id));
 		}
@@ -413,12 +443,19 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
 			.returning();
 
 		// Delete from Cloudinary
-		const video = videoRecord[0];
-		if (video.urlForDeletion) {
+		if (doesThisUserOwnThisVideo.videoUrlForDeletion) {
 			try {
-				await deleteFromCloudinary(video.urlForDeletion, "video");
+				await deleteFromCloudflare("komplex-video", doesThisUserOwnThisVideo.videoUrlForDeletion);
 			} catch (err) {
-				console.error("Failed to delete video from Cloudinary:", err);
+				console.error("Failed to delete video from Cloudflare:", err);
+			}
+		}
+
+		if (doesThisUserOwnThisVideo.thumbnailUrlForDeletion) {
+			try {
+				await deleteFromCloudflare("komplex-image", doesThisUserOwnThisVideo.thumbnailUrlForDeletion);
+			} catch (err) {
+				console.error("Failed to delete thumbnail from Cloudflare:", err);
 			}
 		}
 
