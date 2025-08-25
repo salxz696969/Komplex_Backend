@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
 import { db } from "../../../db";
 import { blogs, users, userSavedBlogs, userSavedVideos, videoComments, videoLikes, videos } from "../../../db/schema";
 import { and, eq, sql, desc } from "drizzle-orm";

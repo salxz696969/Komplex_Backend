@@ -43,8 +43,23 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 			.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
 			.leftJoin(users, eq(forums.userId, users.id)) // Uncomment if you want user info
 			.leftJoin(forumLikes, and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId))))
-			.where(conditions.length > 0 ? and(...conditions) : undefined);
-
+			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.groupBy(
+				forums.id,
+				forums.userId,
+				forums.title,
+				forums.description,
+				forums.type,
+				forums.topic,
+				forums.viewCount,
+				forums.createdAt,
+				forums.updatedAt,
+				forumMedias.url,
+				forumMedias.mediaType,
+				users.firstName,
+				users.lastName,
+				forumLikes.forumId
+			);
 		const forumsWithMedia = Object.values(
 			forumRecords.reduce((acc, forum) => {
 				if (!acc[forum.id]) {
@@ -109,7 +124,23 @@ export const getForumById = async (req: AuthenticatedRequest, res: Response) => 
 			.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
 			.leftJoin(users, eq(forums.userId, users.id)) // Uncomment if you want user info
 			.leftJoin(forumLikes, and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId))))
-			.where(eq(forums.id, Number(id)));
+			.where(eq(forums.id, Number(id)))
+			.groupBy(
+				forums.id,
+				forums.userId,
+				forums.title,
+				forums.description,
+				forums.type,
+				forums.topic,
+				forums.viewCount,
+				forums.createdAt,
+				forums.updatedAt,
+				forumMedias.url,
+				forumMedias.mediaType,
+				users.firstName,
+				users.lastName,
+				forumLikes.forumId
+			);;
 
 		if (!forumRecords || forumRecords.length === 0) {
 			return res.status(404).json({ success: false, message: "Forum not found" });
