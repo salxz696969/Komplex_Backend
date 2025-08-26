@@ -12,7 +12,7 @@ import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction";
+} from './../../../db/cloudinary/cloundinaryFunction';
 import { forumCommentMedias } from "../../../db/models/forum_comment_media";
 import { forumReplyMedias } from "../../../db/models/forum_reply_media";
 import { sql } from "drizzle-orm";
