@@ -5,6 +5,7 @@ import {
   getExercise,
   getExerciseDashboard,
   getExercises,
+  updateExercise,
 } from "../controllers/exercises.controller";
 const router = Router();
 
@@ -13,5 +14,6 @@ router.get("/:id", getExercise);
 router.post("/", createExercise);
 router.delete("/:id", deleteExercise);
 router.get("/dashboard", getExerciseDashboard);
+router.put("/:id", updateExercise);
 
 export default router;

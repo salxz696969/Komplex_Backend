@@ -12,15 +12,15 @@ import { and, sql } from "drizzle-orm";
 
 export const getExercises = async (req: Request, res: Response) => {
   try {
-    const { grade, subject } = req.query;
+    const { grade } = req.query;
 
     // Build the base query
     let baseQuery = db
       .select({
         // Basic exercise info
         id: exercises.id,
-        topic: exercises.topic,
         duration: exercises.duration,
+        title: exercises.title,
         subject: exercises.subject,
         grade: exercises.grade,
         createdAt: exercises.createdAt,
@@ -38,14 +38,9 @@ export const getExercises = async (req: Request, res: Response) => {
 
     // Execute query with or without filters
     let result;
-    if (grade && subject) {
+    if (grade) {
       result = await baseQuery
-        .where(
-          and(
-            eq(exercises.grade, parseInt(grade as string)),
-            eq(exercises.subject, subject as string)
-          )
-        )
+        .where(and(eq(exercises.grade, grade as string)))
         .groupBy(exercises.id);
     } else {
       result = await baseQuery.groupBy(exercises.id);
@@ -120,7 +115,6 @@ export const getExercise = async (req: Request, res: Response) => {
       title: exercise.title,
       description: exercise.description,
       subject: exercise.subject,
-      topic: exercise.topic,
       grade: exercise.grade,
       duration: exercise.duration,
       createdAt: exercise.createdAt,
@@ -152,25 +146,18 @@ export const getExercise = async (req: Request, res: Response) => {
 
 export const createExercise = async (req: Request, res: Response) => {
   try {
-    const {
-      duration,
-      title,
-      description,
-      subject,
-      topic,
-      grade,
-      exerciseQuestions,
-    } = req.body;
+    const userId = 1; // TO CHANGE
+    const { duration, title, description, subject, grade, exerciseQuestions } =
+      req.body;
 
     const exercise = await db
       .insert(exercises)
       .values({
-        userId: 1,
+        userId,
         duration,
         title,
         description,
         subject,
-        topic,
         grade,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -272,5 +259,53 @@ export const getExerciseDashboard = async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" + error });
+  }
+};
+
+export const updateExercise = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { duration, title, description, subject, grade, exerciseQuestions } =
+      req.body;
+
+    const exercise = await db
+      .update(exercises)
+      .set({ duration, title, description, subject, grade })
+      .where(eq(exercises.id, parseInt(id)));
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found" });
+    }
+
+    for (let question of exerciseQuestions) {
+      await db
+        .update(questions)
+        .set({
+          title: question.title,
+          questionType: question.questionType,
+          section: question.section,
+          imageUrl: question.imageUrl,
+        })
+        .where(eq(questions.id, parseInt(question.id)));
+
+      for (let choice of question.choices) {
+        console.log("choice", choice);
+        console.log("question.id", question.id);
+        console.log("choice.id", choice.id);
+
+        await db
+          .update(choices)
+          .set({
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+          })
+          .where(eq(choices.id, parseInt(choice.id)));
+      }
+    }
+
+    res.status(200).json({ message: "Exercise updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" + error });
+    console.error("Update exercise error:", error);
   }
 };

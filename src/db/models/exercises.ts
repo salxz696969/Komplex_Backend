@@ -14,8 +14,7 @@ export const exercises = pgTable("exercises", {
   title: text("title"),
   description: text("description"),
   subject: text("subject"),
-  topic: text("topic"),
-  grade: integer("grade"),
+  grade: varchar("grade"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

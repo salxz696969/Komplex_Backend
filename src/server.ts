@@ -8,6 +8,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("Express error:", err.stack); // log stack trace
+  res.status(500).json({ message: "Internal Server Error" });
+});
+
 app.use("/", routes);
 app.use("/admin", adminRoutes);
 
