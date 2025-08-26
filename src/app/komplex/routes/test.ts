@@ -1,5 +1,5 @@
 import { Router } from "express";
-import upload from "../../middleware/upload";
+// import upload from "../../middleware/upload";
 import cloudinary from "../../../db/cloudinary/cloudinaryConfig";
 import { db } from "../../../db/index";
 import { blogs } from "../../../db/models/blogs";
@@ -28,6 +28,10 @@ import { PgEnum } from "drizzle-orm/pg-core";
 import { and, eq } from "drizzle-orm";
 import { deleteReply } from "../controllers/forum_replies.controller";
 import fs from "fs";
+import r2 from "../../../db/cloudflare/cloudflareConfig";
+import { Request, Response } from "express";
+import { uploadVideoAndThumbnail } from "../../middleware/upload";
+import { deleteFromCloudflare, uploadImageToCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
 
 const router = Router();
 
@@ -42,80 +46,80 @@ router.delete("/delete-blog-media", async (req, res) => {
 	res.json(deleteResult); // Compare exactly what’s in the DB vs what you pass to eq()
 });
 
-router.post("/upload", upload.single("file"), async (req, res) => {
-	try {
-		if (!req.file) {
-			return res.status(400).json({ success: false, message: "No file uploaded" });
-		}
+// // router.post("/upload", upload.single("file"), async (req, res) => {
+// // 	try {
+// // 		if (!req.file) {
+// // 			return res.status(400).json({ success: false, message: "No file uploaded" });
+// // 		}
 
-		// Upload buffer to Cloudinary
-		const stream = cloudinary.uploader.upload_stream(
-			{ folder: "my_app_uploads", resource_type: "auto" }, // auto handles images & videos
-			(error, result) => {
-				if (error) {
-					console.error(error);
-					return res.status(500).json({ success: false, error: error.message });
-				}
-				if (result) {
-					// send back the Cloudinary URL
-					return res.json({ success: true, url: result.secure_url });
-				}
-			}
-		);
+// // 		// Upload buffer to Cloudinary
+// // 		const stream = cloudinary.uploader.upload_stream(
+// // 			{ folder: "my_app_uploads", resource_type: "auto" }, // auto handles images & videos
+// // 			(error, result) => {
+// // 				if (error) {
+// // 					console.error(error);
+// // 					return res.status(500).json({ success: false, error: error.message });
+// // 				}
+// // 				if (result) {
+// // 					// send back the Cloudinary URL
+// // 					return res.json({ success: true, url: result.secure_url });
+// // 				}
+// // 			}
+// // 		);
 
-		stream.end(req.file.buffer);
-	} catch (err) {
-		res.status(500).json({ success: false, error: (err as Error).message });
-	}
-});
-router.post("/uploads", upload.any(), async (req, res) => {
-	try {
-		const userId = 1;
-		const { title, description, type, topic } = req.body;
+// // 		stream.end(req.file.buffer);
+// // 	} catch (err) {
+// // 		res.status(500).json({ success: false, error: (err as Error).message });
+// // 	}
+// // });
+// // router.post("/uploads", upload.any(), async (req, res) => {
+// 	try {
+// 		const userId = 1;
+// 		const { title, description, type, topic } = req.body;
 
-		let public_url: string | null = null;
-		let mediaType: "image" | "video" | null = null;
+// 		let public_url: string | null = null;
+// 		let mediaType: "image" | "video" | null = null;
 
-		// Handle optional file upload
-		if (Array.isArray(req.files) && req.files.length > 0) {
-			const file = req.files[0];
-			console.log("File received:", file.originalname);
+// 		// Handle optional file upload
+// 		if (Array.isArray(req.files) && req.files.length > 0) {
+// 			const file = req.files[0];
+// 			console.log("File received:", file.originalname);
 
-			// Upload to Cloudinary
-			const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
-			// Type assertion to access secure_url
-			public_url = (result as { secure_url: string }).secure_url; // Use secure_url from Cloudinary
-			mediaType = file.mimetype.startsWith("video") ? "video" : "image";
-		}
+// 			// Upload to Cloudinary
+// 			const result = await uploadToCloudinary(file.buffer, "my_app_uploads", "auto");
+// 			// Type assertion to access secure_url
+// 			public_url = (result as { secure_url: string }).secure_url; // Use secure_url from Cloudinary
+// 			mediaType = file.mimetype.startsWith("video") ? "video" : "image";
+// 		}
 
-		// Insert blog into database
-		const newBlog = await db
-			.insert(blogs)
-			.values({
-				userId: Number(userId),
-				title,
-				description,
-				type,
-				topic,
-				viewCount: 0,
-				likeCount: 0,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.returning();
+// 		// Insert blog into database
+// 		const newBlog = await db
+// 			.insert(blogs)
+// 			.values({
+// 				userId: Number(userId),
+// 				title,
+// 				description,
+// 				type,
+// 				topic,
+// 				viewCount: 0,
+// 				likeCount: 0,
+// 				createdAt: new Date(),
+// 				updatedAt: new Date(),
+// 			})
+// 			.returning();
 
-		// Send response including uploaded file URL (if any)
-		res.status(201).json({
-			success: true,
-			blog: newBlog,
-			public_url,
-			mediaType,
-		});
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ success: false, error: (err as Error).message });
-	}
-});
+// 		// Send response including uploaded file URL (if any)
+// 		res.status(201).json({
+// 			success: true,
+// 			blog: newBlog,
+// 			public_url,
+// 			mediaType,
+// 		});
+// 	} catch (err) {
+// 		console.error(err);
+// 		res.status(500).json({ success: false, error: (err as Error).message });
+// 	}
+// // });
 
 router.get("/media", async (req, res) => {
 	const post = await db
@@ -201,31 +205,31 @@ router.get("/ping", (req, res) => {
 	res.json({ message: "pong" });
 });
 
-router.post("/upload-video", upload.single("file"), async (req, res) => {
-	try {
-		if (req.file) {
-			if (!req.file.mimetype.startsWith("video")) {
-				throw new Error("Only video files are allowed.");
-			}
-			const result = await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto");
-			const secure_url = (result as { secure_url: string }).secure_url;
-			const public_id = (result as { public_id: string }).public_id;
-			const duration = (result as { duration?: number }).duration ?? 0;
-			const thumbnail_url = (result as { thumbnail_url?: string }).thumbnail_url ?? "";
-			return res.json({
-				success: true,
-				secure_url,
-				public_id,
-				duration,
-				thumbnail_url,
-			});
-		} else {
-			return res.status(400).json({ success: false, message: "No video file uploaded." });
-		}
-	} catch (err) {
-		res.status(500).json({ success: false, error: (err as Error).message });
-	}
-});
+// router.post("/upload-video", upload.single("file"), async (req, res) => {
+// 	try {
+// 		if (req.file) {
+// 			if (!req.file.mimetype.startsWith("video")) {
+// 				throw new Error("Only video files are allowed.");
+// 			}
+// 			const result = await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto");
+// 			const secure_url = (result as { secure_url: string }).secure_url;
+// 			const public_id = (result as { public_id: string }).public_id;
+// 			const duration = (result as { duration?: number }).duration ?? 0;
+// 			const thumbnail_url = (result as { thumbnail_url?: string }).thumbnail_url ?? "";
+// 			return res.json({
+// 				success: true,
+// 				secure_url,
+// 				public_id,
+// 				duration,
+// 				thumbnail_url,
+// 			});
+// 		} else {
+// 			return res.status(400).json({ success: false, message: "No video file uploaded." });
+// 		}
+// 	} catch (err) {
+// 		res.status(500).json({ success: false, error: (err as Error).message });
+// 	}
+// });
 
 router.delete("/delete-video", async (req, res) => {
 	const publicId = "my_app_uploads/ukswwa5f2fmyjk0engbs";
@@ -239,4 +243,124 @@ router.delete("/delete-video", async (req, res) => {
 	}
 });
 
+// router.post("/upload/photo", upload.single("file"), async (req: Request, res: Response) => {
+// 	if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+// 	try {
+// 		await r2
+// 			.upload({
+// 				Bucket: "komplex-image",
+// 				Key: req.file.originalname,
+// 				Body: req.file.buffer,
+// 				ContentType: req.file.mimetype,
+// 			})
+// 			.promise();
+
+// 		const fileUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${req.file.originalname}`;
+
+// 		res.json({ message: "Uploaded to photos bucket!", url: fileUrl, key: req.file.originalname });
+// 	} catch (err: any) {
+// 		res.status(500).json({ error: err.message });
+// 	}
+// });
+
+// Upload to videos bucket
+// router.post("/upload/video", upload.single("file"), async (req: Request, res: Response) => {
+// 	if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+// 	try {
+// 		await r2
+// 			.upload({
+// 				Bucket: "komplex-video",
+// 				Key: req.file.originalname,
+// 				Body: req.file.buffer,
+// 				ContentType: req.file.mimetype,
+// 			})
+// 			.promise();
+
+// 		const fileUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${req.file.originalname}`;
+
+// 		res.json({ message: "Uploaded to videos bucket!", url: fileUrl, key: req.file.originalname });
+// 	} catch (err: any) {
+// 		res.status(500).json({ error: err.message });
+// 	}
+// });
+
+// Delete a photo
+// router.delete("/delete/photo/:key", async (req: Request, res: Response) => {
+// 	const { key } = req.params;
+// 	if (!key) return res.status(400).json({ error: "No key provided" });
+
+// 	try {
+// 		await r2
+// 			.deleteObject({
+// 				Bucket: "komplex-image",
+// 				Key: key,
+// 			})
+// 			.promise();
+
+// 		res.json({ message: `Deleted photo: ${key}` });
+// 	} catch (err: any) {
+// 		res.status(500).json({ error: err.message });
+// 	}
+// });
+
+// Delete a video
+// router.delete("/delete/video/:key", async (req: Request, res: Response) => {
+// 	const { key } = req.params;
+// 	if (!key) return res.status(400).json({ error: "No key provided" });
+
+// 	try {
+// 		await r2
+// 			.deleteObject({
+// 				Bucket: "komplex-video",
+// 				Key: key,
+// 			})
+// 			.promise();
+
+// 		res.json({ message: `Deleted video: ${key}` });
+// 	} catch (err: any) {
+// 		res.status(500).json({ error: err.message });
+// 	}
+// });
+
+router.post("/upload-video-and-thumbnail", uploadVideoAndThumbnail, async (req, res) => {
+	try {
+		let videoFile: any;
+		let imageFile: any;
+
+		if (req.files && typeof req.files === "object" && "video" in req.files && "image" in req.files) {
+			videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).video[0];
+			imageFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).image[0];
+		} else {
+			return res.status(400).json({ error: "Files not uploaded correctly" });
+		}
+
+		// Upload to Cloudflare
+		const videoUrl = await uploadVideoToCloudflare(
+			videoFile.filename,
+			await fs.promises.readFile(videoFile.path),
+			videoFile.mimetype
+		);
+		const imageUrl = await uploadImageToCloudflare(
+			imageFile.filename,
+			await fs.promises.readFile(imageFile.path),
+			imageFile.mimetype
+		);
+
+		// Delete local files
+		await fs.promises.unlink(videoFile.path);
+		await fs.promises.unlink(imageFile.path);
+
+		res.json({ success: true, videoUrl, imageUrl });
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+	}
+});
+
+router.delete("/delete-cloudflare", async () => {
+	await deleteFromCloudflare("komplex-video", "1756106158205-video.mp4");
+	await deleteFromCloudflare("komplex-image", "1756106158193-image.png");
+});
 export default router;

@@ -7,15 +7,22 @@ import {
 	unlikeForumComment,
 	updateForumComment,
 } from "../controllers/forum_comments.controller";
-import upload from "../../middleware/upload";
+import { uploadImages } from "../../middleware/upload";
 const router = Router();
 
 // Add your route handlers here
 router.get("/:id", getAllCommentsForAForum);
-router.post("/:id", upload.any(), postForumComment);
-router.patch("/:id/like", likeForumComment);
-router.patch("/:id/unlike", unlikeForumComment);
-router.patch("/:id", upload.any(), updateForumComment);
-router.delete("/:id", deleteForumComment);
+// <<<<<<< HEAD
+// router.post("/:id", upload.any(), postForumComment);
+// router.patch("/:id/like", likeForumComment);
+// router.patch("/:id/unlike", unlikeForumComment);
+// router.patch("/:id", upload.any(), updateForumComment);
+// =======
+router.post("/:id", uploadImages.array("images", 4), postForumComment);
+router.post("/:id/like", likeForumComment);
+router.delete("/:id/unlike", unlikeForumComment);
+router.patch("/:id", uploadImages.array("images", 4), updateForumComment);
+// >>>>>>> 141698d11d0c513180ff94ce485f4ca263d16a78
+// router.delete("/:id", deleteForumComment);
 
 export default router;
