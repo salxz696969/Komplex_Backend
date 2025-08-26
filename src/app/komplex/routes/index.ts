@@ -10,7 +10,7 @@ import videoLikesRouter from "./video_likes.route";
 import videoRepliesRouter from "./video_replies.route";
 import videosRouter from "./videos.route";
 import userContentRouter from "./user-content.route";
-import testRouter from "./test";
+import feedbackRouter from "./feedback.route";
 
 const router = Router();
 
@@ -25,6 +25,6 @@ router.use("/video_likes", videoLikesRouter);
 router.use("/video_replies", videoRepliesRouter);
 router.use("/videos", videosRouter);
 router.use("/user-content", userContentRouter);
-router.use("/test", testRouter);
+router.use("/feedback", feedbackRouter);
 
 export default router;

@@ -28,7 +28,7 @@ export const getAllAdmins = async (req: Request, res: Response) => {
 
 export const createAdmin = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, phone } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await db
       .insert(users)
@@ -36,8 +36,12 @@ export const createAdmin = async (req: Request, res: Response) => {
         firstName,
         lastName,
         email,
+        phone,
         password: hashedPassword,
         isAdmin: true,
+        isVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
     res.json(result);
