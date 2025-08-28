@@ -1,10 +1,11 @@
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema";
 import { db } from "../../../db/index";
 import { Request, Response } from "express";
 import { forumReplyLikes } from "../../../db/models/forum_reply_like";
 import { forumReplyMedias } from "../../../db/models/forum_reply_media";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
+import { redis } from "../../../db/redis/redisConfig";
 
 interface AuthenticatedRequest extends Request {
 	user?: {
@@ -17,59 +18,119 @@ export const getAllRepliesForAComment = async (req: AuthenticatedRequest, res: R
 	try {
 		const { id } = req.params;
 		const { userId } = req.user ?? { userId: 1 };
+		const { page } = req.query;
+		const pageNumber = Number(page) || 1;
+		const limit = 20;
+		const offset = (pageNumber - 1) * limit;
 
-		const replies = await db
+		const cacheKey = `forumReplies:comment:${id}:page:${pageNumber}`;
+		const cached = await redis.get(cacheKey);
+
+		let cachedReplies: any[] = [];
+		if (cached) {
+			cachedReplies = JSON.parse(cached).repliesWithMedia;
+			console.log("data from redis");
+		}
+
+		// --- Fetch dynamic fields fresh ---
+		const dynamicData = await db
 			.select({
 				id: forumReplies.id,
-				userId: forumReplies.userId,
-				forumCommentId: forumReplies.forumCommentId,
-				description: forumReplies.description,
-				createdAt: forumReplies.createdAt,
-				updatedAt: forumReplies.updatedAt,
-				mediaUrl: forumReplyMedias.url,
-				mediaType: forumReplyMedias.mediaType,
-				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				likeCount: sql`COUNT(DISTINCT ${forumReplyLikes.forumReplyId})`,
 				isLike: sql`CASE WHEN ${forumReplyLikes.forumReplyId} IS NOT NULL THEN true ELSE false END`,
 			})
 			.from(forumReplies)
-			.leftJoin(forumReplyMedias, eq(forumReplies.id, forumReplyMedias.forumReplyId))
 			.leftJoin(
 				forumReplyLikes,
-				and(eq(forumReplyLikes.forumReplyId, forumReplies.id), eq(forumReplyLikes.userId, Number(userId)))
+				and(
+					eq(forumReplyLikes.forumReplyId, forumReplies.id),
+					eq(forumReplyLikes.userId, Number(userId))
+				)
 			)
-			.leftJoin(users, eq(forumReplies.userId, users.id))
-			.where(eq(forumReplies.forumCommentId, Number(id)));
+			.where(eq(forumReplies.forumCommentId, Number(id)))
+			.groupBy(forumReplies.id, forumReplyLikes.forumReplyId)
+			.offset(offset)
+			.limit(limit);
 
-		if (!replies || replies.length === 0) {
-			return res.status(200).json([]);
+		// If no cache → query full replies and cache static part
+		if (!cachedReplies.length) {
+			const replyRows = await db
+				.select({
+					id: forumReplies.id,
+					userId: forumReplies.userId,
+					forumCommentId: forumReplies.forumCommentId,
+					description: forumReplies.description,
+					createdAt: forumReplies.createdAt,
+					updatedAt: forumReplies.updatedAt,
+					mediaUrl: forumReplyMedias.url,
+					mediaType: forumReplyMedias.mediaType,
+					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				})
+				.from(forumReplies)
+				.leftJoin(forumReplyMedias, eq(forumReplies.id, forumReplyMedias.forumReplyId))
+				.leftJoin(users, eq(users.id, forumReplies.userId))
+				.leftJoin(forumReplyLikes, eq(forumReplies.id, forumReplyLikes.forumReplyId))
+				.where(eq(forumReplies.forumCommentId, Number(id)))
+				.groupBy(
+					forumReplies.id,
+					forumReplies.userId,
+					forumReplies.forumCommentId,
+					forumReplies.description,
+					forumReplies.createdAt,
+					forumReplies.updatedAt,
+					forumReplyMedias.url,
+					forumReplyMedias.mediaType,
+					users.firstName,
+					users.lastName
+				)
+				.orderBy(
+					desc(sql`COUNT(DISTINCT ${forumReplyLikes.id})`),
+					desc(sql`CASE WHEN DATE(${forumReplies.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+					desc(forumReplies.updatedAt)
+				)
+				.offset(offset)
+				.limit(limit);
+
+			cachedReplies = Object.values(
+				replyRows.reduce((acc, reply) => {
+					if (!acc[reply.id]) {
+						acc[reply.id] = {
+							id: reply.id,
+							userId: reply.userId,
+							forumCommentId: reply.forumCommentId,
+							description: reply.description,
+							createdAt: reply.createdAt,
+							updatedAt: reply.updatedAt,
+							media: [] as { url: string; type: string }[],
+							username: reply.username,
+						};
+					}
+					if (reply.mediaUrl) {
+						acc[reply.id].media.push({
+							url: reply.mediaUrl,
+							type: reply.mediaType,
+						});
+					}
+					return acc;
+				}, {} as { [key: number]: any })
+			);
+
+			console.log("data from db");
+			// Cache only static part
+			await redis.set(cacheKey, JSON.stringify({ repliesWithMedia: cachedReplies }), { EX: 60 });
 		}
 
-		const repliesWithMedia = Object.values(
-			replies.reduce((acc, reply) => {
-				if (!acc[reply.id]) {
-					acc[reply.id] = {
-						id: reply.id,
-						userId: reply.userId,
-						forumCommentId: reply.forumCommentId,
-						description: reply.description,
-						createdAt: reply.createdAt,
-						updatedAt: reply.updatedAt,
-						media: [] as { url: string; type: string }[],
-						username: reply.username,
-						isLike: !!reply.isLike,
-					};
-				}
-				if (reply.mediaUrl) {
-					acc[reply.id].media.push({
-						url: reply.mediaUrl,
-						type: reply.mediaType,
-					});
-				}
-				return acc;
-			}, {} as { [key: number]: any })
-		) as Record<number, any>[];
+		// Merge dynamic data with cached static data
+		const repliesWithMedia = cachedReplies.map((r) => {
+			const dynamic = dynamicData.find((d) => d.id === r.id);
+			return {
+				...r,
+				likeCount: Number(dynamic?.likeCount) || 0,
+				isLike: !!dynamic?.isLike,
+			};
+		});
 
-		return res.status(200).json(repliesWithMedia);
+		return res.status(200).json({ repliesWithMedia, hasMore: repliesWithMedia.length === limit });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -83,6 +144,7 @@ export const postForumReply = async (req: AuthenticatedRequest, res: Response) =
 		const { userId } = req.user ?? { userId: 1 };
 		const { description } = req.body;
 		const { id } = req.params;
+		const limit = 20;
 
 		if (!userId || !id || !description) {
 			return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -122,63 +184,58 @@ export const postForumReply = async (req: AuthenticatedRequest, res: Response) =
 				}
 			}
 		}
+		const [username] = await db
+			.select({ firstName: users.firstName, lastName: users.lastName })
+			.from(users)
+			.where(eq(users.id, Number(userId)));
+		const replyWithMedia = {
+			id: insertedForumReply.id,
+			userId: insertedForumReply.userId,
+			forumCommentId: insertedForumReply.forumCommentId,
+			description: insertedForumReply.description,
+			createdAt: insertedForumReply.createdAt,
+			updatedAt: insertedForumReply.updatedAt,
+			username: username.firstName + " " + username.lastName,
+			media: newReplyMedia.map((m) => ({
+				url: m.url,
+				type: m.mediaType,
+			})),
+		};
+
+		let { currentReplyAmount, lastPage } = JSON.parse(
+			(await redis.get(`forumReplies:comment:${id}:lastPage`)) ||
+				JSON.stringify({ currentReplyAmount: 0, lastPage: 1 })
+		);
+
+		// Determine which page to add the new reply
+		if (currentReplyAmount >= limit) {
+			lastPage += 1;
+			currentReplyAmount = 1;
+		} else {
+			currentReplyAmount += 1;
+		}
+
+		const cacheKey = `forumReplies:comment:${id}:page:${lastPage}`;
+		const cached = await redis.get(cacheKey);
+
+		if (cached) {
+			const parsed = JSON.parse(cached);
+			parsed.repliesWithMedia.push(replyWithMedia);
+			await redis.set(cacheKey, JSON.stringify(parsed), { EX: 600 });
+		} else {
+			await redis.set(cacheKey, JSON.stringify({ repliesWithMedia: [replyWithMedia] }), { EX: 600 });
+		}
+
+		// Update last page info in Redis
+		await redis.set(`forumReplies:comment:${id}:lastPage`, JSON.stringify({ currentReplyAmount, lastPage }), {
+			EX: 600,
+		});
 
 		return res.status(201).json({
 			success: true,
 			reply: insertedForumReply,
 			newReplyMedia,
 		});
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
-};
-
-export const likeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
-	try {
-		const { id } = req.params;
-		const { userId } = req.user ?? { userId: 1 };
-
-		if (!userId) {
-			return res.status(401).json({ success: false, message: "Unauthorized" });
-		}
-
-		const like = await db
-			.insert(forumReplyLikes)
-			.values({
-				userId: Number(userId),
-				forumReplyId: Number(id),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.returning();
-
-		return res.status(200).json({ like });
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
-};
-
-export const unlikeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
-	try {
-		const { id } = req.params;
-		const { userId } = req.user ?? { userId: 1 };
-
-		if (!userId) {
-			return res.status(401).json({ success: false, message: "Unauthorized" });
-		}
-
-		const unlike = await db
-			.delete(forumReplyLikes)
-			.where(and(eq(forumReplyLikes.userId, Number(userId)), eq(forumReplyLikes.forumReplyId, Number(id))))
-			.returning();
-
-		return res.status(200).json({ unlike });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -275,6 +332,21 @@ export const updateForumReply = async (req: AuthenticatedRequest, res: Response)
 			.where(eq(forumReplies.id, Number(id)))
 			.returning();
 
+		const pattern = `forumReplies:comment:${updateReply.forumCommentId}:page:*`;
+		let cursor = "0";
+
+		do {
+			const scanResult = await redis.scan(cursor, { MATCH: pattern, COUNT: 100 });
+			cursor = scanResult.cursor;
+			const keys = scanResult.keys;
+
+			if (keys.length > 0) {
+				await Promise.all(keys.map((k) => redis.del(k)));
+			}
+		} while (cursor !== "0");
+
+		await redis.del(`forumReplies:comment:${updateReply.forumCommentId}:lastPage`);
+
 		return res.status(200).json({ updateReply, newReplyMedia, deleteMedia });
 	} catch (error) {
 		return res.status(500).json({
@@ -320,7 +392,6 @@ export const deleteReply = async (userId: number, replyId: number | null, commen
 
 	// Delete by replyId
 	if (replyId && commentId === null) {
-		// Select all medias to delete from Cloudflare
 		const mediasToDelete = await db
 			.select({ urlForDeletion: forumReplyMedias.urlForDeletion })
 			.from(forumReplyMedias)
@@ -332,18 +403,37 @@ export const deleteReply = async (userId: number, replyId: number | null, commen
 			}
 		}
 
-		// Delete from database
 		const deletedMedia = await db
 			.delete(forumReplyMedias)
 			.where(eq(forumReplyMedias.forumReplyId, replyId))
 			.returning({ url: forumReplyMedias.url, mediaType: forumReplyMedias.mediaType });
+
+		const deletedLikes = await db
+			.delete(forumReplyLikes)
+			.where(eq(forumReplyLikes.forumReplyId, replyId))
+			.returning();
 
 		const deletedReply = await db
 			.delete(forumReplies)
 			.where(and(eq(forumReplies.id, replyId), eq(forumReplies.userId, userId)))
 			.returning();
 
-		return { deletedReply, deletedMedia };
+		const pattern = `forumReplies:comment:${deletedReply[0].forumCommentId}:page:*`;
+		let cursor = "0";
+
+		do {
+			const scanResult = await redis.scan(cursor, { MATCH: pattern, COUNT: 100 });
+			cursor = scanResult.cursor;
+			const keys = scanResult.keys;
+
+			if (keys.length > 0) {
+				await Promise.all(keys.map((k) => redis.del(k)));
+			}
+		} while (cursor !== "0");
+
+		await redis.del(`forumReplies:comment:${deletedReply[0].forumCommentId}:lastPage`);
+
+		return { deletedReply, deletedMedia, deletedLikes };
 	}
 
 	// Delete all replies for a commentId
@@ -354,7 +444,6 @@ export const deleteReply = async (userId: number, replyId: number | null, commen
 			.where(eq(forumReplies.forumCommentId, commentId));
 		const replyIds = getReplyIdsByCommentId.map((r) => r.id);
 
-		// Select all medias to delete from Cloudflare
 		const mediasToDelete = await db
 			.select({ urlForDeletion: forumReplyMedias.urlForDeletion })
 			.from(forumReplyMedias)
@@ -370,7 +459,6 @@ export const deleteReply = async (userId: number, replyId: number | null, commen
 			}
 		}
 
-		// Delete from database
 		const deletedMedia = await db
 			.delete(forumReplyMedias)
 			.where(
@@ -380,11 +468,86 @@ export const deleteReply = async (userId: number, replyId: number | null, commen
 			)
 			.returning();
 
+		const deletedLikes = await db
+			.delete(forumReplyLikes)
+			.where(
+				replyIds.length > 0
+					? inArray(forumReplyLikes.forumReplyId, replyIds)
+					: eq(forumReplyLikes.forumReplyId, -1)
+			)
+			.returning();
+
 		const deletedReply = await db
 			.delete(forumReplies)
 			.where(replyIds.length > 0 ? inArray(forumReplies.id, replyIds) : eq(forumReplies.id, -1))
 			.returning();
 
-		return { deletedReply, deletedMedia };
+		const pattern = `forumReplies:comment:${commentId}:page:*`;
+		let cursor = "0";
+
+		do {
+			const scanResult = await redis.scan(cursor, { MATCH: pattern, COUNT: 100 });
+			cursor = scanResult.cursor;
+			const keys = scanResult.keys;
+
+			if (keys.length > 0) {
+				await Promise.all(keys.map((k) => redis.del(k)));
+			}
+		} while (cursor !== "0");
+
+		await redis.del(`forumReplies:comment:${commentId}:lastPage`);
+
+		return { deletedReply, deletedMedia, deletedLikes };
+	}
+};
+
+export const likeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
+
+		if (!userId) {
+			return res.status(401).json({ success: false, message: "Unauthorized" });
+		}
+
+		const like = await db
+			.insert(forumReplyLikes)
+			.values({
+				userId: Number(userId),
+				forumReplyId: Number(id),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.returning();
+
+		return res.status(200).json({ like });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
+};
+
+export const unlikeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
+
+		if (!userId) {
+			return res.status(401).json({ success: false, message: "Unauthorized" });
+		}
+
+		const unlike = await db
+			.delete(forumReplyLikes)
+			.where(and(eq(forumReplyLikes.userId, Number(userId)), eq(forumReplyLikes.forumReplyId, Number(id))))
+			.returning();
+
+		return res.status(200).json({ unlike });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
 	}
 };

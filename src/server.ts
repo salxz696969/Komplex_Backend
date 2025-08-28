@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import routes from "./app/komplex/routes/index";
 import adminRoutes from "./app/komplex.admin/routes";
+import { redis } from "./db/redis/redisConfig";
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -10,6 +11,13 @@ app.use(express.json());
 
 app.use("/", routes);
 app.use("/admin", adminRoutes);
+
+try {
+  await redis.connect();
+  console.log("Redis connected");
+} catch (err) {
+  console.error("Failed to connect to Redis:", err);
+}
 
 app.listen(process.env.PORT || 6000, () => {
   console.log(
