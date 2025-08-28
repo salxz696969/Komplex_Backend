@@ -14,13 +14,7 @@ import { forumCommentMedias } from "../../../db/models/forum_comment_media";
 import { forumReplyMedias } from "../../../db/models/forum_reply_media";
 import { deleteReply } from "./forum_replies.controller";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    // add other user properties if needed
-  };
-}
+import { AuthenticatedRequest } from "../../../types/request";
 
 export const getAllCommentsForAForum = async (
   req: AuthenticatedRequest,

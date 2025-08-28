@@ -5,12 +5,8 @@ import { and, eq } from "drizzle-orm";
 import { blogMedia } from "../../../db/models/blog_media";
 import { sql } from "drizzle-orm";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../../types/request";
+
 
 export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
 	try {

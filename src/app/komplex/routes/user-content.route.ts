@@ -40,10 +40,10 @@ router.delete("/blogs/:id", deleteBlog);
 
 router.get("/forums", getAllForums);
 router.get("/forums/:id", getForumById);
-router.post("/forums", postForum);
+router.post("/forums", uploadImages.array("images", 4), postForum);
 router.patch("/forums/:id/like", likeForum);
 router.patch("/forums/:id/unlike", unlikeForum);
-router.put("/forums/:id", updateForum);
+router.put("/forums/:id", uploadImages.array("images", 4), updateForum);
 router.delete("/forums/:id", deleteForum);
 
 router.get("/exercises/history", getExerciseHistory);

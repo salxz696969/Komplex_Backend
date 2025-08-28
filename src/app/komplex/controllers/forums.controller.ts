@@ -43,7 +43,7 @@ export const getAllForums = async (
         mediaType: forumMedias.mediaType,
         likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
         username: sql`${users.firstName} || ' ' || ${users.lastName}`, // Uncomment if you join users
-        isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
+        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
         // Add more fields if needed, e.g. username, isSave, etc.
       })
       .from(forums)
@@ -89,7 +89,7 @@ export const getAllForums = async (
             likeCount: Number(forum.likeCount) || 0,
             media: [] as { url: string; type: string }[],
             username: forum.username, // Uncomment if you join users
-            isLike: !!forum.isLike, // Uncomment if you join userSavedForums
+            isLiked: !!forum.isLiked, // Uncomment if you join userSavedForums
           };
         }
         if (forum.mediaUrl) {
@@ -134,7 +134,7 @@ export const getForumById = async (
         mediaType: forumMedias.mediaType,
         likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
         username: sql`${users.firstName} || ' ' || ${users.lastName}`, // Uncomment if you join users
-        isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
+        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
       })
       .from(forums)
       .leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
@@ -197,7 +197,7 @@ export const getForumById = async (
         })),
       likeCount: Number(forumRecords[0].likeCount) || 0,
       username: forumRecords[0].username, // Uncomment if you join users
-      isLike: !!forumRecords[0].isLike, // Uncomment if you join userSavedForums
+      isLiked: !!forumRecords[0].isLiked, // Uncomment if you join userSavedForums
     };
 
     return res.status(200).json(forumWithMedia);
