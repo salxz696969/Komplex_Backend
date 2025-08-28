@@ -10,6 +10,8 @@ import databaseRouter from "./database.route";
 import videosRouter from "./videos.route";
 import dashboardRouter from "./dashborad.route";
 import feedbacksRouter from "./feedbacks.route";
+import forumCommentsRouter from "./forum_comments.route";
+import forumRepliesRouter from "./forum_replies.route";
 const adminRoutes = Router();
 // should have /database but let it be like this for now
 adminRoutes.use("/database", databaseRouter);
@@ -23,4 +25,6 @@ adminRoutes.use("/users", usersRouter);
 adminRoutes.use("/videos", videosRouter);
 adminRoutes.use("/dashboard", dashboardRouter);
 adminRoutes.use("/feedbacks", feedbacksRouter);
+adminRoutes.use("/forum_comments", forumCommentsRouter);
+adminRoutes.use("/forum_replies", forumRepliesRouter);
 export default adminRoutes;
