@@ -1,4 +1,4 @@
-import r2 from "./cloudflareConfig";
+import r2 from "./cloudflareConfig.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // Upload an image

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { followUser, unfollowUser } from "../controllers/users.controller";
+import { followUser, unfollowUser } from "../controllers/users.controller.js";
 const router = Router();
 
 // Add your route handlers here

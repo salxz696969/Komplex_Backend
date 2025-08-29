@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "module": "ESNext",               // Use ES modules output
+    "module": "NodeNext",               // keep ES modules
     "target": "ES2020",
-    "moduleResolution": "Node",
+    "moduleResolution": "nodenext",   // <-- important for ESM
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,

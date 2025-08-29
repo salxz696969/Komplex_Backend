@@ -1,6 +1,6 @@
 import { table } from "console";
 import { pgTable, varchar, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { users, videos } from "../schema";
+import { users, videos } from "../schema.js";
 
 export const videoLikes = pgTable(
 	"video_likes",

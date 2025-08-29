@@ -1,5 +1,5 @@
 import { pgTable, varchar, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { blogs, users } from "../schema";
+import { blogs, users } from "../schema.js";
 
 export const userSavedBlogs = pgTable(
 	"user_saved_blogs",

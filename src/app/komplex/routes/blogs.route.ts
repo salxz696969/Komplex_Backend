@@ -7,8 +7,8 @@ import {
 	updateBlog,
 	deleteBlog,
 	unsaveBlog,
-} from "../controllers/blogs.controller";
-import { uploadImages } from "../../middleware/upload";
+} from "../controllers/blogs.controller.js";
+import { uploadImages } from "../../middleware/upload.js";
 
 const router = Router();
 

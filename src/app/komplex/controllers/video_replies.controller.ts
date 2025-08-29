@@ -1,11 +1,11 @@
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { users, videoReplies } from "../../../db/schema";
-import { videoReplyMedias } from "../../../db/models/video_reply_medias";
-import { videoReplyLike } from "../../../db/models/video_reply_like";
-import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-import { redis } from "../../../db/redis/redisConfig";
+import { db } from "../../../db/index.js";
+import { users, videoReplies } from "../../../db/schema.js";
+import { videoReplyMedias } from "../../../db/models/video_reply_medias.js";
+import { videoReplyLike } from "../../../db/models/video_reply_like.js";
+import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 interface AuthenticatedRequest extends Request {
 	user?: {

@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { blogs, users, userSavedBlogs } from "../../../db/schema";
+import { db } from "../../../db/index.js";
+import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
 import { and, desc, eq } from "drizzle-orm";
-import { blogMedia } from "../../../db/models/blog_media";
+import { blogMedia } from "../../../db/models/blog_media.js";
 import { sql } from "drizzle-orm";
-import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-import { redis } from "../../../db/redis/redisConfig";
+import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 interface AuthenticatedRequest extends Request {
 	user?: {
 		userId: string;

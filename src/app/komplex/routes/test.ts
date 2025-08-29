@@ -1,37 +1,37 @@
 import { Router } from "express";
-// import upload from "../../middleware/upload";
-import cloudinary from "../../../db/cloudinary/cloudinaryConfig";
-import { db } from "../../../db/index";
-import { blogs } from "../../../db/models/blogs";
-import { choices } from "../../../db/models/choices";
-import { exercises } from "../../../db/models/exercises";
-import { followers } from "../../../db/models/followers";
-import { forumComments } from "../../../db/models/forum_comments";
-import { forumLikes } from "../../../db/models/forum_likes";
-import { forumMedias } from "../../../db/models/forum_medias";
-import { forumReplies } from "../../../db/models/forum_replies";
-import { forums } from "../../../db/models/forums";
-import { questions } from "../../../db/models/questions";
-import { userExerciseHistory } from "../../../db/models/user_exercise_history";
-import { userSavedBlogs } from "../../../db/models/user_saved_blogs";
-import { userSavedVideos } from "../../../db/models/user_saved_videos";
-import { userVideoHistory } from "../../../db/models/user_video_history";
-import { users } from "../../../db/models/users";
-import { videoComments } from "../../../db/models/video_comments";
-import { videoLikes } from "../../../db/models/video_likes";
-import { videoReplies } from "../../../db/models/video_replies";
-import { videos } from "../../../db/models/videos";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
-import { blogMedia } from "../../../db/models/blog_media";
-import { mediaTypeEnum } from "../../../db/schema";
+// import upload from "../../middleware/upload.js";
+import cloudinary from "../../../db/cloudinary/cloudinaryConfig.js";
+import { db } from "../../../db/index.js";
+import { blogs } from "../../../db/models/blogs.js";
+import { choices } from "../../../db/models/choices.js";
+import { exercises } from "../../../db/models/exercises.js";
+import { followers } from "../../../db/models/followers.js";
+import { forumComments } from "../../../db/models/forum_comments.js";
+import { forumLikes } from "../../../db/models/forum_likes.js";
+import { forumMedias } from "../../../db/models/forum_medias.js";
+import { forumReplies } from "../../../db/models/forum_replies.js";
+import { forums } from "../../../db/models/forums.js";
+import { questions } from "../../../db/models/questions.js";
+import { userExerciseHistory } from "../../../db/models/user_exercise_history.js";
+import { userSavedBlogs } from "../../../db/models/user_saved_blogs.js";
+import { userSavedVideos } from "../../../db/models/user_saved_videos.js";
+import { userVideoHistory } from "../../../db/models/user_video_history.js";
+import { users } from "../../../db/models/users.js";
+import { videoComments } from "../../../db/models/video_comments.js";
+import { videoLikes } from "../../../db/models/video_likes.js";
+import { videoReplies } from "../../../db/models/video_replies.js";
+import { videos } from "../../../db/models/videos.js";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction.js";
+import { blogMedia } from "../../../db/models/blog_media.js";
+import { mediaTypeEnum } from "../../../db/schema.js";
 import { PgEnum } from "drizzle-orm/pg-core";
 import { and, eq } from "drizzle-orm";
-import { deleteReply } from "../controllers/forum_replies.controller";
+import { deleteReply } from "../controllers/forum_replies.controller.js";
 import fs from "fs";
-import r2 from "../../../db/cloudflare/cloudflareConfig";
+import r2 from "../../../db/cloudflare/cloudflareConfig.js";
 import { Request, Response } from "express";
-import { uploadVideoAndThumbnail } from "../../middleware/upload";
-import { deleteFromCloudflare, uploadImageToCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
+import { uploadVideoAndThumbnail } from "../../middleware/upload.js";
+import { deleteFromCloudflare, uploadImageToCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 
 const router = Router();
 
@@ -104,7 +104,7 @@ router.delete("/delete-blog-media", async (req, res) => {
 // 				viewCount: 0,
 // 				likeCount: 0,
 // 				createdAt: new Date(),
-// 				updatedAt: new Date(),
+///
 // 			})
 // 			.returning();
 

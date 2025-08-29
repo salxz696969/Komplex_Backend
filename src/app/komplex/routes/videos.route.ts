@@ -1,16 +1,14 @@
 import { Router } from "express";
 import {
 	deleteVideo,
-	getAllVideos,
-	getVideoById,
 	likeVideo,
 	postVideo,
 	saveVideo,
 	unlikeVideo,
 	unsaveVideo,
 	updateVideo,
-} from "../controllers/videos.controller";
-import { uploadVideoAndThumbnail } from "../../middleware/upload";
+} from "../controllers/videos.controller.js";
+import { uploadVideoAndThumbnail } from "../../middleware/upload.js";
 const router = Router();
 
 // Add your route handlers here

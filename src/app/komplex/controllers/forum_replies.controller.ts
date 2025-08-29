@@ -1,11 +1,11 @@
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
-import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema";
-import { db } from "../../../db/index";
+import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { forumReplyLikes } from "../../../db/models/forum_reply_like";
-import { forumReplyMedias } from "../../../db/models/forum_reply_media";
-import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-import { redis } from "../../../db/redis/redisConfig";
+import { forumReplyLikes } from "../../../db/models/forum_reply_like.js";
+import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
+import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 interface AuthenticatedRequest extends Request {
 	user?: {

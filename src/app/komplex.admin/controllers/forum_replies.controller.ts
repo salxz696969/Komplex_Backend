@@ -1,132 +1,132 @@
 import { eq, and } from "drizzle-orm";
-import { forumComments, forumLikes, forumMedias, forumReplies, forums } from "../../../db/schema";
-import { db } from "../../../db/index";
+import { forumComments, forumLikes, forumMedias, forumReplies, forums } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
-import { forumCommentLikes } from "../../../db/models/forum_comment_like";
-import { forumReplyLikes } from "../../../db/models/forum_reply_like";
-import { forumReplyMedias } from "../../../db/models/forum_reply_media";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction.js";
+import { forumCommentLikes } from "../../../db/models/forum_comment_like.js";
+import { forumReplyLikes } from "../../../db/models/forum_reply_like.js";
+import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
 
 interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
+    user?: {
+        userId: string;
+        // add other user properties if needed
+    };
 }
 
 export const getAllRepliesForAComment = async (req: Request, res: Response) => {
-	try {
-		const { forumCommentId } = req.params;
+    try {
+        const { forumCommentId } = req.params;
 
-		const replies = await db
-			.select()
-			.from(forumReplies)
-			.where(eq(forumReplies.forumCommentId, Number(forumCommentId)));
+        const replies = await db
+            .select()
+            .from(forumReplies)
+            .where(eq(forumReplies.forumCommentId, Number(forumCommentId)));
 
-		return res.json(replies).status(200);
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.json(replies).status(200);
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const postForumReply = async (req: AuthenticatedRequest, res: Response) => {
-	try {
-		let public_url: string | null = null;
-		let mediaType: "image" | "video" | null = null;
+    try {
+        let public_url: string | null = null;
+        let mediaType: "image" | "video" | null = null;
 
-		// If a file is uploaded, upload to Cloudinary
-		if (req.file) {
-			const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
-				public_url: string;
-			};
-			public_url = result.public_url;
-			mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-		}
-		const { userId } = req.user ?? {};
-		const { description, forumCommentId } = req.body;
+        // If a file is uploaded, upload to Cloudinary
+        if (req.file) {
+            const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
+                public_url: string;
+            };
+            public_url = result.public_url;
+            mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+        }
+        const { userId } = req.user ?? {};
+        const { description, forumCommentId } = req.body;
 
-		// Create the forum entry
-		const insertedForumReply = await db
-			.insert(forumReplies)
-			.values({
-				userId: Number(userId),
-				forumCommentId: Number(forumCommentId),
-				description,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.returning();
+        // Create the forum entry
+        const insertedForumReply = await db
+            .insert(forumReplies)
+            .values({
+                userId: Number(userId),
+                forumCommentId: Number(forumCommentId),
+                description,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })
+            .returning();
 
-		if (public_url) {
-			await db.insert(forumReplyMedias).values({
-				forumReplyId: insertedForumReply[0].id,
-				url: public_url,
-				mediaType,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-		}
+        if (public_url) {
+            await db.insert(forumReplyMedias).values({
+                forumReplyId: insertedForumReply[0].id,
+                url: public_url,
+                mediaType,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+        }
 
-		return res.status(201).json({
-			forum: insertedForumReply[0],
-		});
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.status(201).json({
+            forum: insertedForumReply[0],
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const likeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
-	try {
-		const { id } = req.body;
-		const { userId } = req.user ?? {};
+    try {
+        const { id } = req.body;
+        const { userId } = req.user ?? {};
 
-		if (!userId) {
-			return res.status(401).json({ success: false, message: "Unauthorized" });
-		}
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
 
-		await db.insert(forumReplyLikes).values({
-			userId: Number(userId),
-			forumReplyId: Number(id),
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
+        await db.insert(forumReplyLikes).values({
+            userId: Number(userId),
+            forumReplyId: Number(id),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
 
-		return res.status(200).json({ success: true, message: "Forum liked successfully" });
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.status(200).json({ success: true, message: "Forum liked successfully" });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const unlikeForumCommentReply = async (req: AuthenticatedRequest, res: Response) => {
-	try {
-		const { id } = req.body;
-		const { userId } = req.user ?? {};
+    try {
+        const { id } = req.body;
+        const { userId } = req.user ?? {};
 
-		if (!userId) {
-			return res.status(401).json({ success: false, message: "Unauthorized" });
-		}
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
 
-		await db
-			.delete(forumReplyLikes)
-			.where(and(eq(forumReplyLikes.userId, Number(userId)), eq(forumReplyLikes.forumReplyId, Number(id))))
-			.returning();
+        await db
+            .delete(forumReplyLikes)
+            .where(and(eq(forumReplyLikes.userId, Number(userId)), eq(forumReplyLikes.forumReplyId, Number(id))))
+            .returning();
 
-		return res.json({ success: true, message: "Forum unliked successfully" }).status(200);
-	} catch (error) {
-		return res.status(500).json({
-			success: false,
-			error: (error as Error).message,
-		});
-	}
+        return res.json({ success: true, message: "Forum unliked successfully" }).status(200);
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            error: (error as Error).message,
+        });
+    }
 };
 
 export const updateForumReply = async (req: AuthenticatedRequest, res: Response) => {

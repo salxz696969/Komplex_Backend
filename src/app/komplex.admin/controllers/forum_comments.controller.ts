@@ -1,11 +1,11 @@
 import { eq, and, inArray } from "drizzle-orm";
-import { forumComments, forumLikes, forumMedias, forumReplies, forums } from "../../../db/schema";
-import { db } from "../../../db/index";
+import { forumComments, forumLikes, forumMedias, forumReplies, forums } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
-import { forumCommentLikes } from "../../../db/models/forum_comment_like";
-import { forumCommentMedias } from "../../../db/models/forum_comment_media";
-import { forumReplyMedias } from "../../../db/models/forum_reply_media";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction.js";
+import { forumCommentLikes } from "../../../db/models/forum_comment_like.js";
+import { forumCommentMedias } from "../../../db/models/forum_comment_media.js";
+import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
 
 interface AuthenticatedRequest extends Request {
 	user?: {

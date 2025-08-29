@@ -1,14 +1,14 @@
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { users, videoReplies } from "../../../db/schema";
-import { videoComments } from "../../../db/models/video_comments";
-import { videoCommentMedias } from "../../../db/models/video_comment_medias";
-import { videoCommentLike } from "../../../db/models/video_comment_like";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
-import { deleteVideoReply } from "./video_replies.controller";
-import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-import { redis } from "../../../db/redis/redisConfig";
+import { db } from "../../../db/index.js";
+import { users, videoReplies } from "../../../db/schema.js";
+import { videoComments } from "../../../db/models/video_comments.js";
+import { videoCommentMedias } from "../../../db/models/video_comment_medias.js";
+import { videoCommentLike } from "../../../db/models/video_comment_like.js";
+import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction.js";
+import { deleteVideoReply } from "./video_replies.controller.js";
+import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 interface AuthenticatedRequest extends Request {
 	user?: {

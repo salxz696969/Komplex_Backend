@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { followers } from "./../../../db/models/followers";
-import { db } from "./../../../db/index";
+import { followers } from "./../../../db/models/followers.js";
+import { db } from "./../../../db/index.js";
 import { eq, and, inArray, sql } from "drizzle-orm";
 interface AuthenticatedRequest extends Request {
 	user?: {

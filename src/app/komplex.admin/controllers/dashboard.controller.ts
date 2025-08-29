@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
+import { db } from "../../../db/index.js";
 import { sql } from "drizzle-orm";
 import {
   users,
@@ -18,7 +18,7 @@ import {
   followers,
   videoLikes,
   forumLikes,
-} from "../../../db/schema";
+} from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
 
 interface DashboardData {

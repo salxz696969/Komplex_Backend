@@ -1,7 +1,7 @@
 import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
-import { videoReplies } from "./video_replies";
-import { mediaTypeEnum } from "./media_type";
-import { users } from "../schema";
+import { videoReplies } from "./video_replies.js";
+import { mediaTypeEnum } from "./media_type.js";
+import { users } from "../schema.js";
 
 export const videoReplyMedias = pgTable("video_reply_medias", {
 	id: serial("id").primaryKey(),

@@ -1,13 +1,13 @@
 import { eq, and, inArray, sql, desc, like } from "drizzle-orm";
-import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema";
-import { db } from "../../../db/index";
+import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { forumCommentLikes } from "../../../db/models/forum_comment_like";
-import { forumCommentMedias } from "../../../db/models/forum_comment_media";
-import { forumReplyMedias } from "../../../db/models/forum_reply_media";
-import { deleteReply } from "./forum_replies.controller";
-import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-import { redis } from "../../../db/redis/redisConfig";
+import { forumCommentLikes } from "../../../db/models/forum_comment_like.js";
+import { forumCommentMedias } from "../../../db/models/forum_comment_media.js";
+import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
+import { deleteReply } from "./forum_replies.controller.js";
+import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 interface AuthenticatedRequest extends Request {
 	user?: {

@@ -5,7 +5,7 @@ import {
   getAllUsers,
   updateAdmin,
   deleteAdmin,
-} from "../controllers/users.controller";
+} from "../controllers/users.controller.js";
 const router = Router();
 
 // Add your route handlers here

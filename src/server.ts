@@ -1,9 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import routes from "./app/komplex/routes/index";
-import adminRoutes from "./app/komplex.admin/routes";
-import { redis } from "./db/redis/redisConfig";
+import routes from "./app/komplex/routes/index.js";
+import adminRoutes from "./app/komplex.admin/routes/index.js";
+import { redis } from "./db/redis/redisConfig.js";
 dotenv.config();
 const app = express();
 app.use(cors());

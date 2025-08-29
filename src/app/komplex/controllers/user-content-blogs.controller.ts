@@ -1,8 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
-import { blogs, users, userSavedBlogs } from "../../../db/schema";
-import { db } from "../../../db";
+import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { blogMedia } from "../../../db/models/blog_media";
+import { blogMedia } from "../../../db/models/blog_media.js";
 
 export const getAllUserBlogs = async (req: Request, res: Response) => {
   try {

@@ -1,5 +1,5 @@
 import { pgTable, serial, integer, timestamp } from "drizzle-orm/pg-core";
-import { forumComments, users } from "../schema";
+import { forumComments, users } from "../schema.js";
 
 export const forumCommentLikes = pgTable("forum_comment_likes", {
     id: serial("id").primaryKey(),

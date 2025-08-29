@@ -1,5 +1,5 @@
-import { db } from "../../../db";
-import { exercises } from "../../../db/schema";
+import { db } from "../../../db/index.js";
+import { exercises } from "../../../db/schema.js";
 
 import { Request, Response } from "express";
 

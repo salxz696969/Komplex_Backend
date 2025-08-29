@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadImages } from "../../middleware/upload";
+import { uploadImages } from "../../middleware/upload.js";
 import {
 	getAllVideoRepliesForAComment,
 	postForumVideoReply,
@@ -7,7 +7,7 @@ import {
 	deleteForumVideoReply,
 	likeForumVideoReply,
 	unlikeForumVideoReply,
-} from "../controllers/video_replies.controller";
+} from "../controllers/video_replies.controller.js";
 
 const router = Router();
 

@@ -1,6 +1,5 @@
-import { table } from "console";
-import { pgTable, varchar, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { users, videos } from "../schema";
+import { pgTable, timestamp, serial, integer } from "drizzle-orm/pg-core";
+import { users, videos } from "../schema.js";
 
 export const userSavedVideos = pgTable("user_saved_videos", {
 	id: serial("id").primaryKey(),

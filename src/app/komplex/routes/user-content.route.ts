@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   getAllUserBlogs,
   getBlogById,
-} from "../controllers/user-content-blogs.controller";
+} from "../controllers/user-content-blogs.controller.js";
 
 const router = Router();
 

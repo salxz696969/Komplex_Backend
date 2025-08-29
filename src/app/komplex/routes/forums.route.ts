@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadImages } from "../../middleware/upload";
+import { uploadImages } from "../../middleware/upload.js";
 import {
 	deleteForum,
 	getAllForums,
@@ -8,7 +8,7 @@ import {
 	postForum,
 	unlikeForum,
 	updateForum,
-} from "../controllers/forums.controller";
+} from "../controllers/forums.controller.js";
 const router = Router();
 
 // Add your route handlers here
@@ -21,4 +21,3 @@ router.post("/:id/like", likeForum);
 router.delete("/:id/unlike", unlikeForum);
 
 export default router;
-

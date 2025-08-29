@@ -1,16 +1,16 @@
 import { Router } from "express";
-import blogsRouter from "./blogs.route";
-import exercisesRouter from "./exercises.route";
-import forumCommentsRouter from "./forum_comments.route";
-import forumRepliesRouter from "./forum_replies.route";
-import forumsRouter from "./forums.route";
-import usersRouter from "./users.route";
-import videoCommentsRouter from "./video_comments.route";
-import videoLikesRouter from "./video_likes.route";
-import videoRepliesRouter from "./video_replies.route";
-import videosRouter from "./videos.route";
-import userContentRouter from "./user-content.route";
-import testRouter from "./test";
+import blogsRouter from "./blogs.route.js";
+import exercisesRouter from "./exercises.route.js";
+import forumCommentsRouter from "./forum_comments.route.js";
+import forumRepliesRouter from "./forum_replies.route.js";
+import forumsRouter from "./forums.route.js";
+import usersRouter from "./users.route.js";
+import videoCommentsRouter from "./video_comments.route.js";
+import videoLikesRouter from "./video_likes.route.js";
+import videoRepliesRouter from "./video_replies.route.js";
+import videosRouter from "./videos.route.js";
+import userContentRouter from "./user-content.route.js";
+import testRouter from "./test.js";
 
 const router = Router();
 

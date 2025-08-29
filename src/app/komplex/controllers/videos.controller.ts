@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { blogs, users, userSavedBlogs, userSavedVideos, videoComments, videoLikes, videos } from "../../../db/schema";
+import { db } from "../../../db/index.js";
+import { blogs, users, userSavedBlogs, userSavedVideos, videoComments, videoLikes, videos } from "../../../db/schema.js";
 import { and, eq, sql, desc } from "drizzle-orm";
-import { deleteVideoCommentInternal } from "./video_comments.controller";
+import { deleteVideoCommentInternal } from "./video_comments.controller.js";
 import {
 	deleteFromCloudflare,
 	uploadImageToCloudflare,
 	uploadVideoToCloudflare,
-} from "../../../db/cloudflare/cloudflareFunction";
+} from "../../../db/cloudflare/cloudflareFunction.js";
 import fs from "fs";
-import { redis } from "../../../db/redis/redisConfig";
+import { redis } from "../../../db/redis/redisConfig.js";
 interface AuthenticatedRequest extends Request {
 	user?: {
 		userId: string;

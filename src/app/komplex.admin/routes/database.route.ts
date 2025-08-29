@@ -1,25 +1,25 @@
 import { Router } from "express";
-import { getDashboardData } from "../controllers/database/dashboard.controller";
-import { getSchemaData } from "../controllers/database/schema.controller";
+import { getDashboardData } from "../controllers/database/dashboard.controller.js";
+import { getSchemaData } from "../controllers/database/schema.controller.js";
 import {
   createUser,
   deleteUser,
   getUsers,
   updateUser,
-} from "../controllers/database/users.controller";
+} from "../controllers/database/users.controller.js";
 import {
   createRole,
   deleteRole,
   getRoles,
   updateRoleName,
-} from "../controllers/database/roles.controller";
+} from "../controllers/database/roles.controller.js";
 import {
   updateRolePrivileges,
   updateRoleTableAccess,
-} from "../controllers/database/roles.controller";
-import { getPrivileges } from "../controllers/database/privileges.controller";
-import { getTables } from "../controllers/database/tables.controller";
-import { executeConsoleCommand } from "../controllers/database/console.controller";
+} from "../controllers/database/roles.controller.js";
+import { getPrivileges } from "../controllers/database/privileges.controller.js";
+import { getTables } from "../controllers/database/tables.controller.js";
+import { executeConsoleCommand } from "../controllers/database/console.controller.js";
 const router = Router();
 
 router.get("/dashboard", getDashboardData);

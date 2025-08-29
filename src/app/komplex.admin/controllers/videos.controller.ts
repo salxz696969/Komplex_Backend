@@ -1,14 +1,14 @@
-import { db } from "../../../db";
+import { db } from "../../../db/index.js";
 import {
   videoComments,
   videoLikes,
   videos,
   userSavedVideos,
   users,
-} from "../../../db/schema";
+} from "../../../db/schema.js";
 import { Request, Response } from "express";
 import { eq, sql } from "drizzle-orm";
-import { videoReplies } from "../../../db/schema";
+import { videoReplies } from "../../../db/schema.js";
 
 export const getAllVideos = async (req: Request, res: Response) => {
   try {
