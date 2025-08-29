@@ -19,6 +19,9 @@ try {
   console.error("Failed to connect to Redis:", err);
 }
 
+
+
+
 app.listen(process.env.PORT || 6000, () => {
   console.log(
     `Server is running on http://localhost:${process.env.PORT || 6000}`
