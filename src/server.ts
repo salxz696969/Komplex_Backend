@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import routes from "./app/komplex/routes/index";
 import adminRoutes from "./app/komplex.admin/routes/index";
-import passport from "./config/passport";
+import passport from "./config/passport/google";
+import session from "express-session";
 
 dotenv.config();
 
@@ -21,6 +22,14 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 const app = express();
+
+app.use(
+  session({
+    secret: process.env.JWT_SECRET!,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
 app.use(passport.initialize());
 app.use(cors());

@@ -12,6 +12,7 @@ import videosRouter from "./videos.route";
 import userContentRouter from "./user-content.route";
 import feedbackRouter from "./feedback.route";
 import uploadRouter from "./upload.route";
+import authRouter from "./auth.routes";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/videos", videosRouter);
 router.use("/user-content", userContentRouter);
 router.use("/feedback", feedbackRouter);
 router.use("/upload", uploadRouter);
+router.use("/auth", authRouter);
 
 export default router;
