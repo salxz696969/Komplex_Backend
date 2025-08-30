@@ -11,6 +11,7 @@ import videoRepliesRouter from "./video_replies.route";
 import videosRouter from "./videos.route";
 import userContentRouter from "./user-content.route";
 import feedbackRouter from "./feedback.route";
+import uploadRouter from "./upload.route";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/video_replies", videoRepliesRouter);
 router.use("/videos", videosRouter);
 router.use("/user-content", userContentRouter);
 router.use("/feedback", feedbackRouter);
+router.use("/upload", uploadRouter);
 
 export default router;

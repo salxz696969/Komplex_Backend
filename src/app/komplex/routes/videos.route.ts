@@ -5,6 +5,7 @@ import {
   getVideoById,
   likeVideo,
   postVideo,
+  postVideoPresigned,
   saveVideo,
   unlikeVideo,
   unsaveVideo,
@@ -16,7 +17,8 @@ const router = Router();
 // Add your route handlers here
 router.get("/", getAllVideos);
 router.get("/:id", getVideoById);
-router.post("/", uploadVideoAndThumbnail, postVideo);
+// router.post("/", uploadVideoAndThumbnail, postVideo);
+router.post("/", postVideoPresigned);
 router.patch("/", uploadVideoAndThumbnail, updateVideo);
 router.delete("/:id", deleteVideo);
 router.patch("/:id/like", likeVideo);

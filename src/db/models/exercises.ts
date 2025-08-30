@@ -9,6 +9,7 @@ import {
 
 export const exercises = pgTable("exercises", {
   id: serial("id").primaryKey(),
+  videoId: integer("video_id"),
   userId: integer("user_id"),
   duration: integer("duration"),
   title: text("title"),

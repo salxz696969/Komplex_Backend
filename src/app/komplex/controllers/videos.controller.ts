@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../../../db";
 import {
   blogs,
+  exercises,
   users,
   userSavedBlogs,
   userSavedVideos,
@@ -9,6 +10,8 @@ import {
   videoComments,
   videoLikes,
   videos,
+  questions as questionsTable,
+  choices,
 } from "../../../db/schema";
 import { and, eq, sql, desc } from "drizzle-orm";
 import { deleteVideoCommentInternal } from "./video_comments.controller";
@@ -99,6 +102,99 @@ export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
     if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
     if (thumbnailFile)
       await fs.promises.unlink(thumbnailFile.path).catch(() => {});
+  }
+};
+
+export const postVideoPresigned = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.user ?? { userId: 1 };
+    const {
+      videoKey,
+      title,
+      description,
+      topic,
+      type,
+      thumbnailKey,
+      questions,
+    } = req.body;
+
+    const videoUrl = `${process.env.R2_ENDPOINT}/${videoKey}`;
+    const thumbnailUrl = `${process.env.R2_ENDPOINT}/${thumbnailKey}`;
+
+    const newVideo = await db
+      .insert(videos)
+      .values({
+        videoUrlForDeletion: videoKey,
+        videoUrl,
+        thumbnailUrlForDeletion: thumbnailKey,
+        thumbnailUrl,
+        title,
+        description,
+        topic,
+        type,
+        userId: Number(userId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    // left blank because its not a true exercise, just mcq for video
+    const newExercise = await db
+      .insert(exercises)
+      .values({
+        videoId: newVideo[0].id,
+        title: "",
+        description: "",
+        subject: "",
+        grade: "",
+        duration: 0,
+        userId: Number(userId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    //   return exercises.map(exercise => ({
+    // 	title: exercise.question,
+    // 	choices: exercise.options.map((option, index) => ({
+    // 		text: option,
+    // 		isCorrect: index === exercise.correctAnswer
+    // 	}))
+    // }));
+
+    for (const question of questions) {
+      const newQuestion = await db
+        .insert(questionsTable)
+        .values({
+          exerciseId: newExercise[0].id,
+          title: question.question,
+          questionType: "",
+          section: "",
+          imageUrl: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      for (const choice of question.choices) {
+        await db.insert(choices).values({
+          questionId: newQuestion[0].id,
+          text: choice.text,
+          isCorrect: choice.isCorrect,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    return res.status(201).json({ success: true, video: newVideo });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, error: (error as Error).message });
   }
 };
 
