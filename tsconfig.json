@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "ESNext",               // Use ES modules output
+    "module": "ESNext",
     "target": "ES2020",
     "moduleResolution": "Node",
     "esModuleInterop": true,

@@ -3,6 +3,6 @@ import { getSignedUrl } from "../controllers/upload.controller";
 
 const router = Router();
 
-router.post("/upload-url", getSignedUrl);
+router.post("/upload-url", getSignedUrl as any);
 
 export default router;

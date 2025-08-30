@@ -1,24 +1,23 @@
 import { Router } from "express";
-import { uploadImages } from "../../middleware/upload";
+import { uploadImages } from "../../../middleware/upload";
 import {
-	deleteForum,
-	getAllForums,
-	getForumById,
-	likeForum,
-	postForum,
-	unlikeForum,
-	updateForum,
+  deleteForum,
+  getAllForums,
+  getForumById,
+  likeForum,
+  postForum,
+  unlikeForum,
+  updateForum,
 } from "../controllers/forums.controller";
 const router = Router();
 
 // Add your route handlers here
-router.post("/", uploadImages.array("images", 4), postForum);
-router.get("/", getAllForums);
-router.get("/:id", getForumById);
-router.patch("/:id", uploadImages.array("images", 4), updateForum);
-router.delete("/:id", deleteForum);
-router.post("/:id/like", likeForum);
-router.delete("/:id/unlike", unlikeForum);
+router.post("/", uploadImages.array("images", 4), postForum as any);
+router.get("/", getAllForums as any);
+router.get("/:id", getForumById as any);
+router.patch("/:id", uploadImages.array("images", 4), updateForum as any);
+router.delete("/:id", deleteForum as any);
+router.post("/:id/like", likeForum as any);
+router.delete("/:id/unlike", unlikeForum as any);
 
 export default router;
-

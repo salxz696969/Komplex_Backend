@@ -19,7 +19,7 @@ adminRoutes.use("/blogs", blogsRouter);
 adminRoutes.use("/exercises", exercisesRouter);
 adminRoutes.use("/grades", gradesRouter);
 adminRoutes.use("/subjects", subjectsRouter);
-adminRoutes.use("/followers", followersRouter); 
+adminRoutes.use("/followers", followersRouter);
 adminRoutes.use("/forums", forumsRouter);
 adminRoutes.use("/users", usersRouter);
 adminRoutes.use("/videos", videosRouter);

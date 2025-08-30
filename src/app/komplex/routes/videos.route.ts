@@ -11,19 +11,19 @@ import {
   unsaveVideo,
   updateVideo,
 } from "../controllers/videos.controller";
-import { uploadVideoAndThumbnail } from "../../middleware/upload";
+import { uploadVideoAndThumbnail } from "../../../middleware/upload";
 const router = Router();
 
 // Add your route handlers here
-router.get("/", getAllVideos);
-router.get("/:id", getVideoById);
+router.get("/", getAllVideos as any);
+router.get("/:id", getVideoById as any);
 // router.post("/", uploadVideoAndThumbnail, postVideo);
-router.post("/", postVideoPresigned);
-router.patch("/", uploadVideoAndThumbnail, updateVideo);
-router.delete("/:id", deleteVideo);
-router.patch("/:id/like", likeVideo);
-router.patch("/:id/unlike", unlikeVideo);
-router.patch("/:id/save", saveVideo);
-router.patch("/:id/unsave", unsaveVideo);
+router.post("/", postVideoPresigned as any);
+router.patch("/", uploadVideoAndThumbnail, updateVideo as any);
+router.delete("/:id", deleteVideo as any);
+router.patch("/:id/like", likeVideo as any);
+router.patch("/:id/unlike", unlikeVideo as any);
+router.patch("/:id/save", saveVideo as any);
+router.patch("/:id/unsave", unsaveVideo as any);
 
 export default router;

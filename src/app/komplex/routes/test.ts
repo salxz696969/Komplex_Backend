@@ -21,7 +21,10 @@ import { videoComments } from "../../../db/models/video_comments";
 import { videoLikes } from "../../../db/models/video_likes";
 import { videoReplies } from "../../../db/models/video_replies";
 import { videos } from "../../../db/models/videos";
-import { deleteFromCloudinary, uploadToCloudinary } from "../../../db/cloudinary/cloundinaryFunction";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../../../db/cloudinary/cloundinaryFunction";
 import { blogMedia } from "../../../db/models/blog_media";
 import { mediaTypeEnum } from "../../../db/schema";
 import { PgEnum } from "drizzle-orm/pg-core";
@@ -30,20 +33,29 @@ import { deleteReply } from "../controllers/forum_replies.controller";
 import fs from "fs";
 import r2 from "../../../db/cloudflare/cloudflareConfig";
 import { Request, Response } from "express";
-import { uploadVideoAndThumbnail } from "../../middleware/upload";
-import { deleteFromCloudflare, uploadImageToCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
+import { uploadVideoAndThumbnail } from "../../../middleware/upload";
+import {
+  deleteFromCloudflare,
+  uploadImageToCloudflare,
+  uploadVideoToCloudflare,
+} from "../../../db/cloudflare/cloudflareFunction";
 
 const router = Router();
 
 // Add your route handlers here
 router.delete("/delete-blog-media", async (req, res) => {
-	const deleteResult = await db
-		.delete(blogMedia)
-		.where(and(eq(blogMedia.blogId, 3), eq(blogMedia.urlForDeletion, "my_app_uploads/hrhbmpoblp66tvyllhjk")))
-		.returning();
-	// const row = await db.select({ url: blogMedia.urlForDeletion }).from(blogMedia).where(eq(blogMedia.blogId, 3));
+  const deleteResult = await db
+    .delete(blogMedia)
+    .where(
+      and(
+        eq(blogMedia.blogId, 3),
+        eq(blogMedia.urlForDeletion, "my_app_uploads/hrhbmpoblp66tvyllhjk")
+      )
+    )
+    .returning();
+  // const row = await db.select({ url: blogMedia.urlForDeletion }).from(blogMedia).where(eq(blogMedia.blogId, 3));
 
-	res.json(deleteResult); // Compare exactly what’s in the DB vs what you pass to eq()
+  res.json(deleteResult); // Compare exactly what’s in the DB vs what you pass to eq()
 });
 
 // // router.post("/upload", upload.single("file"), async (req, res) => {
@@ -122,87 +134,91 @@ router.delete("/delete-blog-media", async (req, res) => {
 // // });
 
 router.get("/media", async (req, res) => {
-	const post = await db
-		.insert(blogMedia)
-		.values({
-			blogId: 1,
-			url: "https://res.cloudinary.com/dc5uhjhun/image/upload/v1755072063/my_app_uploads/smtmnrt9rp2kokpptg3h.png",
-			mediaType: "image",
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})
-		.returning();
+  const post = await db
+    .insert(blogMedia)
+    .values({
+      blogId: 1,
+      url: "https://res.cloudinary.com/dc5uhjhun/image/upload/v1755072063/my_app_uploads/smtmnrt9rp2kokpptg3h.png",
+      mediaType: "image",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
 
-	res.json(post);
+  res.json(post);
 });
 
 router.delete("/delete", async (req, res) => {
-	try {
-		const { public_id } = req.body;
+  try {
+    const { public_id } = req.body;
 
-		if (!public_id) {
-			return res.status(400).json({ success: false, message: "public_id is required" });
-		}
+    if (!public_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "public_id is required" });
+    }
 
-		// Delete from Cloudinary
-		const result = await cloudinary.uploader.destroy(public_id, { resource_type: "image" });
+    // Delete from Cloudinary
+    const result = await cloudinary.uploader.destroy(public_id, {
+      resource_type: "image",
+    });
 
-		res.json({ success: true, result });
-	} catch (err) {
-		res.status(500).json({ success: false, error: (err as Error).message });
-	}
+    res.json({ success: true, result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
 });
 
 router.get("/drizzle", async (req, res) => {
-	const blog = await db.select().from(blogs);
-	const choice = await db.select().from(choices);
-	const exercise = await db.select().from(exercises);
-	const follower = await db.select().from(followers);
-	const forumComment = await db.select().from(forumComments);
-	const forumLike = await db.select().from(forumLikes);
-	const forumMedia = await db.select().from(forumMedias);
-	const forumReply = await db.select().from(forumReplies);
-	const forum = await db.select().from(forums);
-	const question = await db.select().from(questions);
-	const userExerciseHistory1 = await db.select().from(userExerciseHistory);
-	const userSavedBlog = await db.select().from(userSavedBlogs);
-	const userSavedVideo = await db.select().from(userSavedVideos);
-	const userVideoHistory1 = await db.select().from(userVideoHistory);
-	const user = await db.select().from(users);
-	const videoComment = await db.select().from(videoComments);
-	const videoLike = await db.select().from(videoLikes);
-	const videoReply = await db.select().from(videoReplies);
-	const video = await db.select().from(videos);
-	res.json({
-		blog,
-		choice,
-		exercise,
-		follower,
-		forumComment,
-		forumLike,
-		forumMedia,
-		forumReply,
-		forum,
-		question,
-		userExerciseHistory1,
-		userSavedBlog,
-		userSavedVideo,
-		userVideoHistory1,
-		user,
-		videoComment,
-		videoLike,
-		videoReply,
-		video,
-	});
+  const blog = await db.select().from(blogs);
+  const choice = await db.select().from(choices);
+  const exercise = await db.select().from(exercises);
+  const follower = await db.select().from(followers);
+  const forumComment = await db.select().from(forumComments);
+  const forumLike = await db.select().from(forumLikes);
+  const forumMedia = await db.select().from(forumMedias);
+  const forumReply = await db.select().from(forumReplies);
+  const forum = await db.select().from(forums);
+  const question = await db.select().from(questions);
+  const userExerciseHistory1 = await db.select().from(userExerciseHistory);
+  const userSavedBlog = await db.select().from(userSavedBlogs);
+  const userSavedVideo = await db.select().from(userSavedVideos);
+  const userVideoHistory1 = await db.select().from(userVideoHistory);
+  const user = await db.select().from(users);
+  const videoComment = await db.select().from(videoComments);
+  const videoLike = await db.select().from(videoLikes);
+  const videoReply = await db.select().from(videoReplies);
+  const video = await db.select().from(videos);
+  res.json({
+    blog,
+    choice,
+    exercise,
+    follower,
+    forumComment,
+    forumLike,
+    forumMedia,
+    forumReply,
+    forum,
+    question,
+    userExerciseHistory1,
+    userSavedBlog,
+    userSavedVideo,
+    userVideoHistory1,
+    user,
+    videoComment,
+    videoLike,
+    videoReply,
+    video,
+  });
 });
 
 router.delete("/delete-reply", async (req, res) => {
-	await deleteReply(1, null, 10);
-	res.json({ success: true });
+  await deleteReply(1, null, 10);
+  res.json({ success: true });
 });
 
 router.get("/ping", (req, res) => {
-	res.json({ message: "pong" });
+  res.json({ message: "pong" });
 });
 
 // router.post("/upload-video", upload.single("file"), async (req, res) => {
@@ -232,15 +248,17 @@ router.get("/ping", (req, res) => {
 // });
 
 router.delete("/delete-video", async (req, res) => {
-	const publicId = "my_app_uploads/ukswwa5f2fmyjk0engbs";
+  const publicId = "my_app_uploads/ukswwa5f2fmyjk0engbs";
 
-	try {
-		const result = await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
-		res.json({ success: true, message: "Photo deleted successfully", result });
-	} catch (err: any) {
-		console.error(err);
-		res.status(500).json({ success: false, error: err.message });
-	}
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+    });
+    res.json({ success: true, message: "Photo deleted successfully", result });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // router.post("/upload/photo", upload.single("file"), async (req: Request, res: Response) => {
@@ -324,43 +342,58 @@ router.delete("/delete-video", async (req, res) => {
 // 	}
 // });
 
-router.post("/upload-video-and-thumbnail", uploadVideoAndThumbnail, async (req, res) => {
-	try {
-		let videoFile: any;
-		let imageFile: any;
+router.post(
+  "/upload-video-and-thumbnail",
+  uploadVideoAndThumbnail,
+  async (req, res) => {
+    try {
+      let videoFile: any;
+      let imageFile: any;
 
-		if (req.files && typeof req.files === "object" && "video" in req.files && "image" in req.files) {
-			videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).video[0];
-			imageFile = (req.files as { [fieldname: string]: Express.Multer.File[] }).image[0];
-		} else {
-			return res.status(400).json({ error: "Files not uploaded correctly" });
-		}
+      if (
+        req.files &&
+        typeof req.files === "object" &&
+        "video" in req.files &&
+        "image" in req.files
+      ) {
+        videoFile = (
+          req.files as { [fieldname: string]: Express.Multer.File[] }
+        ).video[0];
+        imageFile = (
+          req.files as { [fieldname: string]: Express.Multer.File[] }
+        ).image[0];
+      } else {
+        return res.status(400).json({ error: "Files not uploaded correctly" });
+      }
 
-		// Upload to Cloudflare
-		const videoUrl = await uploadVideoToCloudflare(
-			videoFile.filename,
-			await fs.promises.readFile(videoFile.path),
-			videoFile.mimetype
-		);
-		const imageUrl = await uploadImageToCloudflare(
-			imageFile.filename,
-			await fs.promises.readFile(imageFile.path),
-			imageFile.mimetype
-		);
+      // Upload to Cloudflare
+      const videoUrl = await uploadVideoToCloudflare(
+        videoFile.filename,
+        await fs.promises.readFile(videoFile.path),
+        videoFile.mimetype
+      );
+      const imageUrl = await uploadImageToCloudflare(
+        imageFile.filename,
+        await fs.promises.readFile(imageFile.path),
+        imageFile.mimetype
+      );
 
-		// Delete local files
-		await fs.promises.unlink(videoFile.path);
-		await fs.promises.unlink(imageFile.path);
+      // Delete local files
+      await fs.promises.unlink(videoFile.path);
+      await fs.promises.unlink(imageFile.path);
 
-		res.json({ success: true, videoUrl, imageUrl });
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-	}
-});
+      res.json({ success: true, videoUrl, imageUrl });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+);
 
 router.delete("/delete-cloudflare", async () => {
-	await deleteFromCloudflare("komplex-video", "1756106158205-video.mp4");
-	await deleteFromCloudflare("komplex-image", "1756106158193-image.png");
+  await deleteFromCloudflare("komplex-video", "1756106158205-video.mp4");
+  await deleteFromCloudflare("komplex-image", "1756106158193-image.png");
 });
 export default router;

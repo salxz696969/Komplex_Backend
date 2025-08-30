@@ -24,7 +24,7 @@ import {
   getExerciseById,
 } from "../controllers/user-content/user-content-exercises.controller";
 import { getUserContentDashboard } from "../controllers/user-content/user-content-dashboard.controller";
-import { uploadImages } from "../../middleware/upload";
+import { uploadImages } from "../../../middleware/upload";
 import {
   getAllVideos,
   getUserVideoHistory,
@@ -36,30 +36,30 @@ const router = Router();
 
 router.get("/dashboard", getUserContentDashboard);
 
-router.get("/blogs", getAllUserBlogs);
-router.get("/blogs/:id", getBlogById);
-router.post("/blogs", uploadImages.array("images", 4), postBlog);
-router.patch("/blogs/:id/save", saveBlog);
-router.patch("/blogs/:id/unsave", unsaveBlog);
-router.put("/blogs/:id", uploadImages.array("images", 4), updateBlog);
-router.delete("/blogs/:id", deleteBlog);
+router.get("/blogs", getAllUserBlogs as any);
+router.get("/blogs/:id", getBlogById as any);
+router.post("/blogs", uploadImages.array("images", 4), postBlog as any);
+router.patch("/blogs/:id/save", saveBlog as any);
+router.patch("/blogs/:id/unsave", unsaveBlog as any);
+router.put("/blogs/:id", uploadImages.array("images", 4), updateBlog as any);
+router.delete("/blogs/:id", deleteBlog as any);
 
-router.get("/forums", getAllForums);
-router.get("/forums/:id", getForumById);
-router.post("/forums", uploadImages.array("images", 4), postForum);
-router.patch("/forums/:id/like", likeForum);
-router.patch("/forums/:id/unlike", unlikeForum);
-router.put("/forums/:id", uploadImages.array("images", 4), updateForum);
-router.delete("/forums/:id", deleteForum);
+router.get("/forums", getAllForums as any);
+router.get("/forums/:id", getForumById as any);
+router.post("/forums", uploadImages.array("images", 4), postForum as any);
+router.patch("/forums/:id/like", likeForum as any);
+router.patch("/forums/:id/unlike", unlikeForum as any);
+router.put("/forums/:id", uploadImages.array("images", 4), updateForum as any);
+router.delete("/forums/:id", deleteForum as any);
 
-router.get("/exercises/history", getExerciseHistory);
-router.get("/exercises/dashboard", getExerciseDashboard);
-router.get("/exercises", getExercises);
-router.get("/exercises/:id", getExerciseById);
+router.get("/exercises/history", getExerciseHistory as any);
+router.get("/exercises/dashboard", getExerciseDashboard as any);
+router.get("/exercises", getExercises as any);
+router.get("/exercises/:id", getExerciseById as any);
 
-router.get("/videos", getAllVideos);
-router.get("/videos/:id", getVideoById);
-router.get("/video_history", getUserVideoHistory);
-router.get("/video_likes/:id", getVideoLikes);
+router.get("/videos", getAllVideos as any);
+router.get("/videos/:id", getVideoById as any);
+router.get("/video_history", getUserVideoHistory as any);
+router.get("/video_likes/:id", getVideoLikes as any);
 
 export default router;
