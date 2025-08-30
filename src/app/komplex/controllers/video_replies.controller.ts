@@ -5,13 +5,7 @@ import { users, videoReplies } from "../../../db/schema";
 import { videoReplyMedias } from "../../../db/models/video_reply_medias";
 import { videoReplyLike } from "../../../db/models/video_reply_like";
 import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction";
-
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../../types/request";
 
 export const getAllVideoRepliesForAComment = async (req: AuthenticatedRequest, res: Response) => {
 	try {

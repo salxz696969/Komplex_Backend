@@ -25,6 +25,12 @@ import {
 } from "../controllers/user-content/user-content-exercises.controller";
 import { getUserContentDashboard } from "../controllers/user-content/user-content-dashboard.controller";
 import { uploadImages } from "../../middleware/upload";
+import {
+  getAllVideos,
+  getUserVideoHistory,
+  getVideoById,
+} from "../controllers/user-content/user-content-videos.controller";
+import { getVideoLikes } from "../controllers/video_likes.controller";
 
 const router = Router();
 
@@ -50,5 +56,10 @@ router.get("/exercises/history", getExerciseHistory);
 router.get("/exercises/dashboard", getExerciseDashboard);
 router.get("/exercises", getExercises);
 router.get("/exercises/:id", getExerciseById);
+
+router.get("/videos", getAllVideos);
+router.get("/videos/:id", getVideoById);
+router.get("/video_history", getUserVideoHistory);
+router.get("/video_likes/:id", getVideoLikes);
 
 export default router;

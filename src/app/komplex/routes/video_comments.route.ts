@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { uploadImages } from "../../middleware/upload";
 import {
-	getAllVideoCommentsForAVideo,
-	postVideoComment,
-	updateVideoComment,
-	deleteVideoComment,
-	likeVideoComment,
-	unlikeVideoComment,
+  getAllVideoCommentsForAVideo,
+  postVideoComment,
+  updateVideoComment,
+  deleteVideoComment,
+  likeVideoComment,
+  unlikeVideoComment,
 } from "../controllers/video_comments.controller";
 
 const router = Router();
@@ -26,7 +26,7 @@ router.delete("/:id", deleteVideoComment);
 // Like a comment
 router.post("/:id/like", likeVideoComment);
 
-// Unlike a comment
+// Unlike a comment 
 router.post("/:id/unlike", unlikeVideoComment);
 
 export default router;

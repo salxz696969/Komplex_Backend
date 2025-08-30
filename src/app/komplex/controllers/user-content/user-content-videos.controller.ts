@@ -1,29 +1,23 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
+import { db } from "../../../../db";
 import {
-  blogs,
   users,
-  userSavedBlogs,
   userSavedVideos,
-  userVideoHistory,
   videoComments,
   videoLikes,
   videos,
-} from "../../../db/schema";
-import { and, eq, sql, desc } from "drizzle-orm";
-import { deleteVideoCommentInternal } from "./video_comments.controller";
+} from "../../../../db/schema";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { deleteVideoCommentInternal } from "../video_comments.controller";
 import {
   deleteFromCloudflare,
   uploadImageToCloudflare,
   uploadVideoToCloudflare,
-} from "../../../db/cloudflare/cloudflareFunction";
+} from "../../../../db/cloudflare/cloudflareFunction";
 import fs from "fs";
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    // add other user properties if needed
-  };
-}
+import { AuthenticatedRequest } from "../../../../types/request";
+import crypto from "crypto";
+import { userVideoHistory } from "../../../../db/models/user_video_history";
 
 export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
   let videoFile: Express.Multer.File | undefined;
@@ -228,21 +222,6 @@ export const getVideoById = async (
         userSavedVideos.id,
         videoLikes.id
       );
-    // increment view count
-    await db
-      .update(videos)
-      .set({
-        viewCount: (videoRow.viewCount ?? 0) + 1,
-      })
-      .where(eq(videos.id, videoId));
-
-    // insert into history
-    await db.insert(userVideoHistory).values({
-      userId: Number(userId),
-      videoId: videoId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
 
     if (!videoRow) {
       return res
@@ -588,6 +567,38 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
       deletedSaves,
       deleteComments,
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const getUserVideoHistory = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.user ?? { userId: "1" };
+
+    const videoHistory = await db
+      .select()
+      .from(userVideoHistory)
+      .leftJoin(videos, eq(userVideoHistory.videoId, videos.id))
+      .where(eq(userVideoHistory.userId, Number(userId)))
+      .orderBy(desc(userVideoHistory.createdAt));
+
+    return res.status(200).json(
+      videoHistory.map((history) => ({
+        id: history.user_video_history.id,
+        videoId: history.user_video_history.videoId,
+        createdAt: history.user_video_history.createdAt,
+        updatedAt: history.user_video_history.updatedAt,
+        title: history.videos?.title,
+        thumbnailUrl: history.videos?.thumbnailUrl,
+      }))
+    );
   } catch (error) {
     return res.status(500).json({
       success: false,
