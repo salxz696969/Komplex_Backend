@@ -2,9 +2,22 @@ import express from "express";
 import googlePassport from "../../../config/passport/google";
 import microsoftPassport from "../../../config/passport/microsoft";
 import discordPassport from "../../../config/passport/discord";
-import { handleOAuthSuccess } from "../controllers/auth.controller";
+import {
+  handleOAuthSuccess,
+  handleLogin,
+  handleSignup,
+  getToken,
+} from "../controllers/auth.controller";
 
 const router = express.Router();
+
+// DEFAULT ----------------------
+
+router.post("/login", handleLogin as any);
+router.post("/signup", handleSignup as any);
+
+// this is for getting the short lived cookie called when login or signup is completed with OAuth
+router.get("/token", getToken as any);
 
 // GOOGLE ----------------------
 

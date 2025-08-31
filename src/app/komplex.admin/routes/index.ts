@@ -12,6 +12,7 @@ import dashboardRouter from "./dashborad.route";
 import feedbacksRouter from "./feedbacks.route";
 import forumCommentsRouter from "./forum_comments.route";
 import forumRepliesRouter from "./forum_replies.route";
+import authRouter from "./auth.route"
 const adminRoutes = Router();
 // should have /database but let it be like this for now
 adminRoutes.use("/database", databaseRouter);
@@ -27,4 +28,5 @@ adminRoutes.use("/dashboard", dashboardRouter);
 adminRoutes.use("/feedbacks", feedbacksRouter);
 adminRoutes.use("/forum_comments", forumCommentsRouter);
 adminRoutes.use("/forum_replies", forumRepliesRouter);
+adminRoutes.use("/auth", authRouter)
 export default adminRoutes;

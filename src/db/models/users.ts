@@ -2,6 +2,7 @@ import { pgTable, varchar, text, date, boolean, timestamp, serial } from "drizzl
 
 export const users = pgTable("users", {
 	id: serial("id").primaryKey(),
+	username: text("username"),
 	firstName: text("first_name"),
 	lastName: text("last_name"),
 	dateOfBirth: date("date_of_birth"),
@@ -10,6 +11,7 @@ export const users = pgTable("users", {
 	email: text("email"),
 	password: text("password"),
 	phone: text("phone"),
+	profileImage: text("profile_image"),
 	createdAt: timestamp("created_at").defaultNow(),
 	updatedAt: timestamp("updated_at").defaultNow(),
 });
