@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { db } from "../../../db";
 import { users } from "../../../db/schema";
-import { and, eq } from "drizzle-orm";
-import bcrypt from "crypto";
+import { eq, or } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export const handleOAuthSuccess = async (
   req: AuthenticatedRequest,
@@ -25,20 +25,38 @@ export const handleOAuthSuccess = async (
 };
 
 export const handleLogin = async (req: AuthenticatedRequest, res: Response) => {
-  const { email, password } = req.body;
-  const user = await db
+  const { email, username, password } = req.body;
+
+  // First find user by email only
+  const [user] = await db
     .select()
     .from(users)
-    .where(and(eq(users.email, email), eq(users.password, password)))
+    .where(or(eq(users.email, email), eq(users.username, username)))
     .limit(1);
 
-  if (!user[0]) {
+  if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const token = jwt.sign({ id: user[0].id }, process.env.JWT_SECRET as string);
+  // Then verify password
+  const isValidPassword = await bcrypt.compare(
+    password,
+    user.password as string
+  );
+  if (!isValidPassword) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
 
-  res.status(200).json({ message: "Login successful", user: user[0], token });
+  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: true,
+    maxAge: 1000 * 60 * 5, // 5 minutes
+    sameSite: "strict",
+  });
+
+  res.status(200).json({ message: "Login successful", user: user, token });
 };
 
 export const handleSignup = async (
@@ -58,13 +76,16 @@ export const handleSignup = async (
     profileImage,
   } = req.body;
   try {
+    // Hash password properly with bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const [user] = await db
       .insert(users)
       .values({
         email,
         username,
         firstName,
-        password: bcrypt.hash(password, "sha256"),
+        password: hashedPassword,
         lastName,
         dateOfBirth,
         isAdmin,
@@ -80,17 +101,66 @@ export const handleSignup = async (
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 1000 * 60 * 5, // 5 minutes
+      sameSite: "strict",
+    });
+
     res.status(200).json({ message: "Signup successful", user, token });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const getToken = async (req: AuthenticatedRequest) => {
-  // get from cookie, convert to jwt
-  const token = req.cookies.token;
-  if (!token) {
-    return null;
+export const getToken = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: "No token found" });
+    }
+
+    // Verify the JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      id: string;
+    };
+
+    // Return the token for mobile usage
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error("Token validation error:", error);
+    res.status(401).json({ message: "Invalid token" });
   }
-  return token;
+};
+
+export const extendCookieTime = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: "No token found" });
+    }
+
+    // Verify the JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      id: string;
+    };
+
+    // Extend cookie for web usage
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ message: "Cookie extended" });
+  } catch (error) {
+    console.error("Token validation error:", error);
+    res.status(401).json({ message: "Invalid token" });
+  }
 };

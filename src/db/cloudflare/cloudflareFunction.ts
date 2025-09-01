@@ -1,6 +1,8 @@
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import r2 from "./cloudflareConfig";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import crypto from "crypto";
+import { imageMimeTypes } from "../../utils/imageMimeTypes";
 
 // Upload an image
 export const uploadImageToCloudflare = async (
@@ -56,21 +58,22 @@ export const getSignedUrlFromCloudflare = async (
   fileType: string,
   userId: string
 ): Promise<{ signedUrl: string; key: string }> => {
-  const bucket =
-    fileType === "image/jpeg" ||
-    fileType === "image/png" ||
-    fileType === "image/jpg" ||
-    fileType === "image/webp"
-      ? "komplex-image"
-      : "komplex-video";
+  const bucket = imageMimeTypes.includes(fileType)
+    ? "komplex-image"
+    : "komplex-video";
+
+  const key = `${userId}/${fileName}-${crypto.randomUUID()}`;
 
   const command = await new PutObjectCommand({
     Bucket: bucket,
-    Key: `${userId}/${fileName}`,
+    Key: key,
     ContentType: fileType,
   });
 
   const signedUrl = await getSignedUrl(r2, command, { expiresIn: 60 }); // 1 min expiry
 
-  return { signedUrl, key: `${userId}/${fileName}` };
+  return {
+    signedUrl,
+    key,
+  };
 };

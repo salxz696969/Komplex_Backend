@@ -121,8 +121,22 @@ export const postVideoPresigned = async (
       questions,
     } = req.body;
 
-    const videoUrl = `${process.env.R2_ENDPOINT}/${videoKey}`;
-    const thumbnailUrl = `${process.env.R2_ENDPOINT}/${thumbnailKey}`;
+    // Validate that the user exists
+    const userExists = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, Number(userId)))
+      .limit(1);
+
+    if (userExists.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: `User with ID ${userId} does not exist`,
+      });
+    }
+
+    const videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
+    const thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
 
     const newVideo = await db
       .insert(videos)
@@ -135,21 +149,7 @@ export const postVideoPresigned = async (
         description,
         topic,
         type,
-        userId: Number(userId),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    // left blank because its not a true exercise, just mcq for video
-    const newExercise = await db
-      .insert(exercises)
-      .values({
-        videoId: newVideo[0].id,
-        title: "",
-        description: "",
-        subject: "",
-        grade: "",
+        viewCount: 0,
         duration: 0,
         userId: Number(userId),
         createdAt: new Date(),
@@ -157,44 +157,57 @@ export const postVideoPresigned = async (
       })
       .returning();
 
-    //   return exercises.map(exercise => ({
-    // 	title: exercise.question,
-    // 	choices: exercise.options.map((option, index) => ({
-    // 		text: option,
-    // 		isCorrect: index === exercise.correctAnswer
-    // 	}))
-    // }));
-
-    for (const question of questions) {
-      const newQuestion = await db
-        .insert(questionsTable)
+    if (questions) {
+      // left blank because its not a true exercise, just mcq for video
+      const newExercise = await db
+        .insert(exercises)
         .values({
-          exerciseId: newExercise[0].id,
-          title: question.question,
-          questionType: "",
-          section: "",
-          imageUrl: "",
+          videoId: newVideo[0].id,
+          title: "",
+          description: "",
+          subject: "",
+          grade: "",
+          duration: 0,
+          userId: Number(userId),
           createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning();
 
-      for (const choice of question.choices) {
-        await db.insert(choices).values({
-          questionId: newQuestion[0].id,
-          text: choice.text,
-          isCorrect: choice.isCorrect,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+      for (const question of questions) {
+        const newQuestion = await db
+          .insert(questionsTable)
+          .values({
+            exerciseId: newExercise[0].id,
+            title: question.question,
+            questionType: "",
+            section: "",
+            imageUrl: "",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        for (const choice of question.choices) {
+          await db.insert(choices).values({
+            questionId: newQuestion[0].id,
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
       }
     }
 
     return res.status(201).json({ success: true, video: newVideo });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, error: (error as Error).message });
+    console.error("postVideoPresigned error:", error);
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      details: error instanceof Error ? error.stack : "Unknown error",
+    });
   }
 };
 
@@ -647,7 +660,7 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
       .where(eq(userSavedVideos.videoId, Number(id)))
       .returning();
 
-    // Delete from Cloudinary
+    // Delete from cloudflare
     if (doesThisUserOwnThisVideo.videoUrlForDeletion) {
       try {
         await deleteFromCloudflare(

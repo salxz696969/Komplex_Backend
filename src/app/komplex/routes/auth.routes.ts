@@ -1,3 +1,4 @@
+import { extendCookieTime } from "./../controllers/auth.controller";
 import express from "express";
 import googlePassport from "../../../config/passport/google";
 import microsoftPassport from "../../../config/passport/microsoft";
@@ -17,7 +18,8 @@ router.post("/login", handleLogin as any);
 router.post("/signup", handleSignup as any);
 
 // this is for getting the short lived cookie called when login or signup is completed with OAuth
-router.get("/token", getToken as any);
+router.get("/mobile/token", getToken as any);
+router.get("/web/token", extendCookieTime as any);
 
 // GOOGLE ----------------------
 

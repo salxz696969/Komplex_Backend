@@ -19,7 +19,7 @@ router.get("/", getAllVideos as any);
 router.get("/:id", getVideoById as any);
 // router.post("/", uploadVideoAndThumbnail, postVideo);
 router.post("/", postVideoPresigned as any);
-router.patch("/", uploadVideoAndThumbnail, updateVideo as any);
+// router.patch("/", uploadVideoAndThumbnail, updateVideo as any);
 router.delete("/:id", deleteVideo as any);
 router.patch("/:id/like", likeVideo as any);
 router.patch("/:id/unlike", unlikeVideo as any);
