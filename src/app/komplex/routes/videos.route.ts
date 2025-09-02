@@ -10,6 +10,9 @@ import {
   unlikeVideo,
   unsaveVideo,
   updateVideo,
+  getVideoExercise,
+  updateVideoPresignedUrl,
+  updateVideoExercise,
 } from "../controllers/videos.controller";
 import { uploadVideoAndThumbnail } from "../../../middleware/upload";
 const router = Router();
@@ -21,9 +24,12 @@ router.get("/:id", getVideoById as any);
 router.post("/", postVideoPresigned as any);
 // router.patch("/", uploadVideoAndThumbnail, updateVideo as any);
 router.delete("/:id", deleteVideo as any);
+router.put("/:id", updateVideoPresignedUrl as any);
 router.patch("/:id/like", likeVideo as any);
 router.patch("/:id/unlike", unlikeVideo as any);
 router.patch("/:id/save", saveVideo as any);
 router.patch("/:id/unsave", unsaveVideo as any);
+router.get("/:id/exercise", getVideoExercise as any);
+router.put("/:id/exercise", updateVideoExercise as any);
 
 export default router;

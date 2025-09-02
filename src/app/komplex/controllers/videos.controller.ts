@@ -157,46 +157,53 @@ export const postVideoPresigned = async (
       })
       .returning();
 
-    if (questions) {
-      // left blank because its not a true exercise, just mcq for video
-      const newExercise = await db
-        .insert(exercises)
+    // Create exercise for video quiz
+    console.log(questions);
+
+    // questions
+    // :
+    // [{title: "1+1", choices: [{text: "2", isCorrect: true}, {text: "3", isCorrect: false}]}]
+    // 0
+    // :
+    // {title: "1+1", choices: [{text: "2", isCorrect: true}, {text: "3", isCorrect: false}]}
+
+    const newExercise = await db
+      .insert(exercises)
+      .values({
+        videoId: newVideo[0].id,
+        title: `Quiz for ${title}`,
+        description: `Multiple choice questions for the video: ${title}`,
+        subject: topic || "General",
+        grade: "All",
+        duration: 0,
+        userId: Number(userId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    for (const question of questions) {
+      const newQuestion = await db
+        .insert(questionsTable)
         .values({
-          videoId: newVideo[0].id,
-          title: "",
-          description: "",
-          subject: "",
-          grade: "",
-          duration: 0,
-          userId: Number(userId),
+          exerciseId: newExercise[0].id,
+          title: question.title,
+          questionType: "",
+          section: "",
+          imageUrl: "",
           createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning();
 
-      for (const question of questions) {
-        const newQuestion = await db
-          .insert(questionsTable)
-          .values({
-            exerciseId: newExercise[0].id,
-            title: question.question,
-            questionType: "",
-            section: "",
-            imageUrl: "",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-
-        for (const choice of question.choices) {
-          await db.insert(choices).values({
-            questionId: newQuestion[0].id,
-            text: choice.text,
-            isCorrect: choice.isCorrect,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-        }
+      for (const choice of question.choices) {
+        await db.insert(choices).values({
+          questionId: newQuestion[0].id,
+          text: choice.text,
+          isCorrect: choice.isCorrect,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
     }
 
@@ -697,6 +704,194 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
       deletedSaves,
       deleteComments,
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const getVideoExercise = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    // const { userId } = req.user ?? { userId: "1" };
+
+    const videoExercise = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.videoId, Number(id)));
+
+    const exerciseQuestions = await db
+      .select()
+      .from(questionsTable)
+      .where(eq(questionsTable.exerciseId, videoExercise[0].id));
+    let exerciseQuestionsWithChoices = [];
+    for (const question of exerciseQuestions) {
+      const exerciseChoices = await db
+        .select()
+        .from(choices)
+        .where(eq(choices.questionId, question.id));
+      exerciseQuestionsWithChoices.push({
+        ...question,
+        choices: exerciseChoices,
+      });
+    }
+
+    return res.status(200).json(exerciseQuestionsWithChoices);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const updateVideoPresignedUrl = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user ?? { userId: "1" };
+    //   // Update video data
+    //   await axios.put(`http://localhost:6969/videos/${video.id}`, {
+    // 	title: formData.title,
+    // 	description: formData.description,
+    // 	videoKey: videoKey,
+    // 	thumbnailKey: thumbnailKey,
+    // });
+
+    const { title, description, videoKey, thumbnailKey } = req.body;
+
+    const videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
+    const thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
+
+    const [video] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.id, Number(id)))
+      .limit(1);
+
+    if (!video) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Video not found" });
+    }
+
+    // delete video from cloudflare
+    deleteFromCloudflare("komplex-video", video.videoUrlForDeletion ?? "");
+
+    // delete thumbnail from cloudflare
+    deleteFromCloudflare("komplex-image", video.thumbnailUrlForDeletion ?? "");
+
+    await db
+      .update(videos)
+      .set({
+        title,
+        description,
+        videoUrl: videoUrl,
+        thumbnailUrl: thumbnailUrl,
+        videoUrlForDeletion: videoKey,
+        thumbnailUrlForDeletion: thumbnailKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(videos.id, Number(id)));
+
+    return res.status(200).json({ success: true, video });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const updateVideoExercise = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user ?? { userId: "1" };
+
+    const { questions } = req.body;
+
+    const [exercise] = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.videoId, Number(id)));
+
+    if (!exercise) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Exercise not found" });
+    }
+
+    await db
+      .update(exercises)
+      .set({
+        title: exercise.title,
+        description: exercise.description,
+        subject: exercise.subject,
+        grade: exercise.grade,
+        duration: exercise.duration,
+        updatedAt: new Date(),
+      })
+      .where(eq(exercises.id, exercise.id));
+
+    for (const question of questions) {
+      const [existingQuestion] = await db
+        .select()
+        .from(questionsTable)
+        .where(eq(questionsTable.exerciseId, exercise.id));
+
+      if (!existingQuestion) {
+        await db.insert(questionsTable).values({
+          exerciseId: exercise.id,
+          title: question.title,
+          questionType: "",
+          section: "",
+          imageUrl: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      for (const choice of question.choices) {
+        // Check if choice has an ID (existing choice) or not (new choice)
+        if (choice.id && !isNaN(Number(choice.id))) {
+          // Update existing choice
+          const [existingChoice] = await db
+            .select()
+            .from(choices)
+            .where(eq(choices.id, Number(choice.id)));
+
+          if (existingChoice) {
+            await db
+              .update(choices)
+              .set({
+                text: choice.text,
+                isCorrect: choice.isCorrect,
+                updatedAt: new Date(),
+              })
+              .where(eq(choices.id, Number(choice.id)));
+          }
+        } else {
+          // Insert new choice
+          await db.insert(choices).values({
+            questionId: existingQuestion.id,
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
+    }
   } catch (error) {
     return res.status(500).json({
       success: false,
