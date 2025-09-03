@@ -10,11 +10,7 @@ import { deleteVideoReply } from "./video_replies.controller.js";
 import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 import { redis } from "../../../db/redis/redisConfig.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const getAllVideoCommentsForAVideo = async (req: AuthenticatedRequest, res: Response) => {
 	try {
@@ -46,10 +42,7 @@ export const getAllVideoCommentsForAVideo = async (req: AuthenticatedRequest, re
 			.from(videoComments)
 			.leftJoin(
 				videoCommentLike,
-				and(
-					eq(videoCommentLike.videoCommentId, videoComments.id),
-					eq(videoCommentLike.userId, Number(userId))
-				)
+				and(eq(videoCommentLike.videoCommentId, videoComments.id), eq(videoCommentLike.userId, Number(userId)))
 			)
 			.where(eq(videoComments.videoId, Number(id)))
 			.groupBy(videoComments.id, videoCommentLike.videoCommentId)

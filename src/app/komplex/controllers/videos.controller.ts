@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../../../db/index.js";
 import { blogs, users, userSavedBlogs, userSavedVideos, videoComments, videoLikes, videos } from "../../../db/schema.js";
-import { and, eq, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc, inArray } from "drizzle-orm";
 import { deleteVideoCommentInternal } from "./video_comments.controller.js";
 import {
 	deleteFromCloudflare,
@@ -10,12 +10,7 @@ import {
 } from "../../../db/cloudflare/cloudflareFunction.js";
 import fs from "fs";
 import { redis } from "../../../db/redis/redisConfig.js";
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
 	let videoFile: Express.Multer.File | undefined;
@@ -103,45 +98,50 @@ export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
 
 export const getAllVideos = async (req: AuthenticatedRequest, res: Response) => {
 	try {
-		const { topic, type, page } = req.query;
+		const { type, topic, page } = req.query;
 		const { userId } = req.user ?? { userId: 1 };
 		const conditions = [];
-		if (topic) conditions.push(eq(videos.topic, topic as string));
 		if (type) conditions.push(eq(videos.type, type as string));
+		if (topic) conditions.push(eq(videos.topic, topic as string));
 
 		const pageNumber = Number(page) || 1;
 		const limit = 20;
 		const offset = (pageNumber - 1) * limit;
 
-		const cacheKey = `videos:type=${type || "all"}:topic=${topic || "all"}:page=${pageNumber}`;
-		const cached = await redis.get(cacheKey);
-
-		let cachedVideos: any[] = [];
-		if (cached) {
-			cachedVideos = JSON.parse(cached).videosWithMedia;
-			console.log("data from redis");
-		}
-
-		// --- Fetch dynamic fields fresh ---
-		const dynamicData = await db
-			.select({
-				id: videos.id,
-				viewCount: videos.viewCount,
-				likeCount: sql`COUNT(DISTINCT ${videoLikes.videoId})`,
-				saveCount: sql`COUNT(DISTINCT ${userSavedVideos.videoId})`,
-				isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
-				isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
-			})
+		// 1️⃣ Fetch filtered video IDs from DB
+		const videoIdRows = await db
+			.select({ id: videos.id })
 			.from(videos)
-			.leftJoin(videoLikes, and(eq(videoLikes.videoId, videos.id), eq(videoLikes.userId, Number(userId))))
-			.leftJoin(userSavedVideos, and(eq(userSavedVideos.videoId, videos.id), eq(userSavedVideos.userId, Number(userId))))
 			.where(conditions.length > 0 ? and(...conditions) : undefined)
-			.groupBy(videos.id, videoLikes.videoId, userSavedVideos.videoId)
+			.orderBy(
+				desc(sql`CASE WHEN DATE(${videos.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+				desc(videos.viewCount),
+				desc(videos.updatedAt),
+				desc(sql`(SELECT COUNT(*) FROM ${videoLikes} WHERE ${videoLikes.videoId} = ${videos.id})`)
+			)
 			.offset(offset)
 			.limit(limit);
 
-		// If no cache → query full videos and cache static part
-		if (!cachedVideos.length) {
+		if (!videoIdRows.length)
+			return res.status(200).json({ videosWithMedia: [], hasMore: false });
+
+		// 2️⃣ Fetch videos from Redis in one call
+		const cachedResults = (await redis.mGet(
+			videoIdRows.map(v => `videos:${v.id}`)
+		)) as (string | null)[];
+		const hits: any[] = [];
+		const missedIds: number[] = [];
+
+		if (cachedResults.length > 0) {
+			cachedResults.forEach((item, idx) => {
+				if (item) hits.push(JSON.parse(item));
+				else missedIds.push(videoIdRows[idx].id);
+			});
+		}
+
+		// 3️⃣ Fetch missing videos from DB
+		let missedVideos: any[] = [];
+		if (missedIds.length > 0) {
 			const videoRows = await db
 				.select({
 					id: videos.id,
@@ -160,39 +160,52 @@ export const getAllVideos = async (req: AuthenticatedRequest, res: Response) => 
 				})
 				.from(videos)
 				.leftJoin(users, eq(videos.userId, users.id))
-				.where(conditions.length > 0 ? and(...conditions) : undefined)
-				.orderBy(
-					desc(sql`CASE WHEN DATE(${videos.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
-					desc(videos.updatedAt),
-					desc(videos.viewCount),
-					desc(sql`(SELECT COUNT(*) FROM ${videoLikes} WHERE ${videoLikes.videoId} = ${videos.id})`)
-				)
-				.offset(offset)
-				.limit(limit);
+				.where(inArray(videos.id, missedIds));
 
-			cachedVideos = videoRows.map((video) => ({
-				id: video.id,
-				userId: video.userId,
-				title: video.title,
-				description: video.description,
-				type: video.type,
-				topic: video.topic,
-				duration: video.duration,
-				videoUrl: video.videoUrl,
-				thumbnailUrl: video.thumbnailUrl,
-				createdAt: video.createdAt,
-				updatedAt: video.updatedAt,
-				username: video.username,
-				viewCount: video.viewCount,
-			}));
-
-			console.log("data from db");
-			await redis.set(cacheKey, JSON.stringify({ videosWithMedia: cachedVideos }), { EX: 600 });
+			for (const video of videoRows) {
+				const formatted = {
+					id: video.id,
+					userId: video.userId,
+					title: video.title,
+					description: video.description,
+					type: video.type,
+					topic: video.topic,
+					duration: video.duration,
+					videoUrl: video.videoUrl,
+					thumbnailUrl: video.thumbnailUrl,
+					createdAt: video.createdAt,
+					updatedAt: video.updatedAt,
+					username: video.username,
+					viewCount: video.viewCount,
+				};
+				missedVideos.push(formatted);
+				await redis.set(`videos:${video.id}`, JSON.stringify(formatted), { EX: 600 });
+			}
 		}
 
-		// Merge dynamic data with cached static data
-		const videosWithMedia = cachedVideos.map((v) => {
-			const dynamic = dynamicData.find((d) => d.id === v.id);
+		// 4️⃣ Merge hits and missed videos, preserving original order
+		const allVideosMap = new Map<number, any>();
+		for (const video of [...hits, ...missedVideos]) allVideosMap.set(video.id, video);
+		const allVideos = videoIdRows.map(v => allVideosMap.get(v.id));
+
+		// 5️⃣ Fetch dynamic fields fresh
+		const dynamicData = await db
+			.select({
+				id: videos.id,
+				viewCount: videos.viewCount,
+				likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
+				saveCount: sql`COUNT(DISTINCT ${userSavedVideos.id})`,
+				isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
+				isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(videos)
+			.leftJoin(videoLikes, and(eq(videoLikes.videoId, videos.id), eq(videoLikes.userId, Number(userId))))
+			.leftJoin(userSavedVideos, and(eq(userSavedVideos.videoId, videos.id), eq(userSavedVideos.userId, Number(userId))))
+			.where(inArray(videos.id, videoIdRows.map(v => v.id)))
+			.groupBy(videos.id, videoLikes.videoId, userSavedVideos.videoId);
+
+		const videosWithMedia = allVideos.map(v => {
+			const dynamic = dynamicData.find(d => d.id === v.id);
 			return {
 				...v,
 				viewCount: (dynamic?.viewCount ?? 0) + 1,
@@ -203,7 +216,7 @@ export const getAllVideos = async (req: AuthenticatedRequest, res: Response) => 
 			};
 		});
 
-		return res.status(200).json({ videosWithMedia, hasMore: videosWithMedia.length === limit });
+		return res.status(200).json({ videosWithMedia, hasMore: allVideos.length === limit });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,

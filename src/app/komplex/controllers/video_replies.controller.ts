@@ -7,12 +7,7 @@ import { videoReplyLike } from "../../../db/models/video_reply_like.js";
 import { deleteFromCloudflare, uploadVideoToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 import { redis } from "../../../db/redis/redisConfig.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const getAllVideoRepliesForAComment = async (req: AuthenticatedRequest, res: Response) => {
 	try {

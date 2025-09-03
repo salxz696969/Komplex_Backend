@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
 	deleteVideo,
+	getAllVideos,
 	likeVideo,
 	postVideo,
 	saveVideo,
@@ -19,5 +20,5 @@ router.post("/:id/like", likeVideo);
 router.delete("/:id/unlike", unlikeVideo);
 router.post("/:id/save", saveVideo);
 router.delete("/:id/unsave", unsaveVideo);
-
+router.get("/", getAllVideos);
 export default router;

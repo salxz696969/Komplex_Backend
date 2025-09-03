@@ -1,17 +1,12 @@
 import { Request, Response } from "express";
 import { db } from "../../../db/index.js";
 import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { blogMedia } from "../../../db/models/blog_media.js";
 import { sql } from "drizzle-orm";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 import { redis } from "../../../db/redis/redisConfig.js";
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
 	try {
@@ -103,38 +98,45 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 		const conditions = [];
 		if (type) conditions.push(eq(blogs.type, type as string));
 		if (topic) conditions.push(eq(blogs.topic, topic as string));
-		let pageNumber = Number(page) || 1;
+
+		const pageNumber = Number(page) || 1;
 		const limit = 20;
 		const offset = (pageNumber - 1) * limit;
 
-		const cacheKey = `blogs:type=${type || "all"}:topic=${topic || "all"}:page=${pageNumber}`;
-		const cached = await redis.get(cacheKey);
-
-		let cachedBlogs: any[] = [];
-		if (cached) {
-			cachedBlogs = JSON.parse(cached).blogsWithMedia;
-			console.log("data from redis");
-		}
-
-		// --- Fetch dynamic fields (likeCount, viewCount, isSave) fresh ---
-		const dynamicData = await db
-			.select({
-				id: blogs.id,
-				viewCount: blogs.viewCount,
-				likeCount: blogs.likeCount,
-				isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
-			})
+		// 1️⃣ Fetch filtered blog IDs from DB
+		const blogIdRows = await db
+			.select({ id: blogs.id })
 			.from(blogs)
-			.leftJoin(
-				userSavedBlogs,
-				and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId)))
-			)
 			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.orderBy(
+				desc(sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+				desc(blogs.likeCount),
+				desc(blogs.updatedAt)
+			)
 			.offset(offset)
 			.limit(limit);
 
-		// If no cache → query full blogs and cache static part
-		if (!cachedBlogs.length) {
+		if (!blogIdRows.length)
+			return res.status(200).json({ blogsWithMedia: [], hasMore: false });
+
+		// 2️⃣ Fetch blogs from Redis in one call
+		const cachedResults = (await redis.mGet(
+			blogIdRows.map(b => `blogs:${b.id}`)
+		)) as (string | null)[];
+
+		const hits: any[] = [];
+		const missedIds: number[] = [];
+
+		if (cachedResults.length > 0) {
+			cachedResults.forEach((item, idx) => {
+				if (item) hits.push(JSON.parse(item));
+				else missedIds.push(blogIdRows[idx].id);
+			});
+		}
+
+		// 3️⃣ Fetch missing blogs from DB
+		let missedBlogs: any[] = [];
+		if (missedIds.length > 0) {
 			const blogRows = await db
 				.select({
 					id: blogs.id,
@@ -152,49 +154,63 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 				.from(blogs)
 				.leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
 				.leftJoin(users, eq(blogs.userId, users.id))
-				.where(conditions.length > 0 ? and(...conditions) : undefined)
-				.orderBy(
-					desc(sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
-					desc(blogs.likeCount),
-					desc(blogs.updatedAt)
-				)
-				.offset(offset)
-				.limit(limit);
+				.where(inArray(blogs.id, missedIds));
 
-			cachedBlogs = Object.values(
-				blogRows.reduce((acc, blog) => {
-					if (!acc[blog.id]) {
-						acc[blog.id] = {
-							id: blog.id,
-							userId: blog.userId,
-							title: blog.title,
-							description: blog.description,
-							type: blog.type,
-							topic: blog.topic,
-							createdAt: blog.createdAt,
-							updatedAt: blog.updatedAt,
-							username: blog.username,
-							media: [] as { url: string; type: string }[],
-						};
-					}
-					if (blog.mediaUrl) {
-						acc[blog.id].media.push({
-							url: blog.mediaUrl,
-							type: blog.mediaType,
-						});
-					}
-					return acc;
-				}, {} as { [key: number]: any })
-			);
-			console.log("data from db");
+			const blogMap = new Map<number, any>();
+			for (const blog of blogRows) {
+				if (!blogMap.has(blog.id)) {
+					const formatted = {
+						id: blog.id,
+						userId: blog.userId,
+						title: blog.title,
+						description: blog.description,
+						type: blog.type,
+						topic: blog.topic,
+						createdAt: blog.createdAt,
+						updatedAt: blog.updatedAt,
+						username: blog.username,
+						media: [] as { url: string; type: string }[],
+					};
+					blogMap.set(blog.id, formatted);
+					missedBlogs.push(formatted);
+				}
 
-			// cache only static part
-			await redis.set(cacheKey, JSON.stringify({ blogsWithMedia: cachedBlogs }), { EX: 600 });
+				if (blog.mediaUrl) {
+					blogMap.get(blog.id).media.push({
+						url: blog.mediaUrl,
+						type: blog.mediaType,
+					});
+				}
+			}
+
+			// Write missed blogs to Redis
+			for (const blog of missedBlogs) {
+				await redis.set(`blogs:${blog.id}`, JSON.stringify(blog), { EX: 600 });
+			}
 		}
 
-		// Merge dynamic data with cached static data
-		const blogsWithMedia = cachedBlogs.map((b) => {
-			const dynamic = dynamicData.find((d) => d.id === b.id);
+		// 4️⃣ Merge hits and missed blogs, preserving original order
+		const allBlogsMap = new Map<number, any>();
+		for (const blog of [...hits, ...missedBlogs]) allBlogsMap.set(blog.id, blog);
+		const allBlogs = blogIdRows.map(b => allBlogsMap.get(b.id));
+
+		// 5️⃣ Fetch dynamic fields fresh
+		const dynamicData = await db
+			.select({
+				id: blogs.id,
+				viewCount: blogs.viewCount,
+				likeCount: blogs.likeCount,
+				isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(blogs)
+			.leftJoin(
+				userSavedBlogs,
+				and(eq(userSavedBlogs.blogId, blogs.id), eq(userSavedBlogs.userId, Number(userId)))
+			)
+			.where(inArray(blogs.id, blogIdRows.map(b => b.id)));
+
+		const blogsWithMedia = allBlogs.map(b => {
+			const dynamic = dynamicData.find(d => d.id === b.id);
 			return {
 				...b,
 				viewCount: dynamic?.viewCount ?? 0,
@@ -203,7 +219,7 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 			};
 		});
 
-		return res.status(200).json({ blogsWithMedia, hasMore: blogsWithMedia.length === limit });
+		return res.status(200).json({ blogsWithMedia, hasMore: allBlogs.length === limit });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,
@@ -211,6 +227,7 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
 		});
 	}
 };
+
 
 export const getBlogById = async (req: Request, res: Response) => {
 	try {

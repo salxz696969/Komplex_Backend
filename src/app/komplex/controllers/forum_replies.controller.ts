@@ -7,12 +7,7 @@ import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 import { redis } from "../../../db/redis/redisConfig.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const getAllRepliesForAComment = async (req: AuthenticatedRequest, res: Response) => {
 	try {

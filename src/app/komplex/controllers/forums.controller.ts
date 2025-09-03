@@ -7,12 +7,7 @@ import { deleteReply } from "./forum_replies.controller.js";
 import { deleteComment } from "./forum_comments.controller.js";
 import { redis } from "../../../db/redis/redisConfig.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const getAllForums = async (req: AuthenticatedRequest, res: Response) => {
 	try {
@@ -26,32 +21,40 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 		const limit = 20;
 		const offset = (pageNumber - 1) * limit;
 
-		const cacheKey = `forums:type=${type || "all"}:topic=${topic || "all"}:page=${pageNumber}`;
-		const cached = await redis.get(cacheKey);
-
-		let cachedForums: any[] = [];
-		if (cached) {
-			cachedForums = JSON.parse(cached).forumsWithMedia;
-			console.log("data from redis");
-		}
-
-		// --- Fetch dynamic fields fresh ---
-		const dynamicData = await db
-			.select({
-				id: forums.id,
-				viewCount: forums.viewCount,
-				likeCount: sql`COUNT(DISTINCT ${forumLikes.forumId})`,
-				isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
-			})
+		// 1️⃣ Fetch filtered forum IDs from DB
+		const forumIdRows = await db
+			.select({ id: forums.id })
 			.from(forums)
-			.leftJoin(forumLikes, and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId))))
 			.where(conditions.length > 0 ? and(...conditions) : undefined)
-			.groupBy(forums.id, forumLikes.forumId)
+			.orderBy(
+				desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+				desc(forums.viewCount),
+				desc(forums.updatedAt)
+			)
 			.offset(offset)
 			.limit(limit);
 
-		// If no cache → query full forums and cache static part
-		if (!cachedForums.length) {
+		if (!forumIdRows.length)
+			return res.status(200).json({ forumsWithMedia: [], hasMore: false });
+
+		// 2️⃣ Fetch forums from Redis in one call
+		const cachedResults = (await redis.mGet(
+			forumIdRows.map(f => `forums:${f.id}`)
+		)) as (string | null)[];
+
+		const hits: any[] = [];
+		const missedIds: number[] = [];
+
+		if (cachedResults.length > 0) {
+			cachedResults.forEach((item, idx) => {
+				if (item) hits.push(JSON.parse(item));
+				else missedIds.push(forumIdRows[idx].id);
+			});
+		}
+
+		// 3️⃣ Fetch missing forums from DB
+		let missedForums: any[] = [];
+		if (missedIds.length > 0) {
 			const forumRows = await db
 				.select({
 					id: forums.id,
@@ -65,56 +68,68 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 					mediaUrl: forumMedias.url,
 					mediaType: forumMedias.mediaType,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
-					viewCount: forums.viewCount,
-					likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
 				})
 				.from(forums)
 				.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
 				.leftJoin(users, eq(forums.userId, users.id))
-				.where(conditions.length > 0 ? and(...conditions) : undefined)
-				.orderBy(
-					desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
-					desc(forums.updatedAt),
-					desc(forums.viewCount),
-					desc(sql`(SELECT COUNT(*) FROM ${forumLikes} WHERE ${forumLikes.forumId} = ${forums.id})`)
-				)
-				.offset(offset)
-				.limit(limit);
+				.where(inArray(forums.id, missedIds));
 
-			cachedForums = Object.values(
-				forumRows.reduce((acc, forum) => {
-					if (!acc[forum.id]) {
-						acc[forum.id] = {
-							id: forum.id,
-							userId: forum.userId,
-							title: forum.title,
-							description: forum.description,
-							type: forum.type,
-							topic: forum.topic,
-							createdAt: forum.createdAt,
-							updatedAt: forum.updatedAt,
-							username: forum.username,
-							media: [] as { url: string; type: string }[],
-						};
-					}
-					if (forum.mediaUrl) {
-						acc[forum.id].media.push({
-							url: forum.mediaUrl,
-							type: forum.mediaType,
-						});
-					}
-					return acc;
-				}, {} as { [key: number]: any })
-			);
+			const forumMap = new Map<number, any>();
+			for (const forum of forumRows) {
+				if (!forumMap.has(forum.id)) {
+					const formatted = {
+						id: forum.id,
+						userId: forum.userId,
+						title: forum.title,
+						description: forum.description,
+						type: forum.type,
+						topic: forum.topic,
+						createdAt: forum.createdAt,
+						updatedAt: forum.updatedAt,
+						username: forum.username,
+						media: [] as { url: string; type: string }[],
+					};
+					forumMap.set(forum.id, formatted);
+					missedForums.push(formatted);
+				}
 
-			console.log("data from db");
-			// Cache only static part
-			await redis.set(cacheKey, JSON.stringify({ forumsWithMedia: cachedForums }), { EX: 600 });
+				if (forum.mediaUrl) {
+					forumMap.get(forum.id).media.push({
+						url: forum.mediaUrl,
+						type: forum.mediaType,
+					});
+				}
+			}
+
+			// Write missed forums to Redis
+			for (const forum of missedForums) {
+				await redis.set(`forums:${forum.id}`, JSON.stringify(forum), { EX: 600 });
+			}
 		}
 
-		// Merge dynamic data with cached static data
-		const forumsWithMedia = cachedForums.map((f) => {
-			const dynamic = dynamicData.find((d) => d.id === f.id);
+		// 4️⃣ Merge hits and missed forums, preserving original order
+		const allForumsMap = new Map<number, any>();
+		for (const forum of [...hits, ...missedForums]) allForumsMap.set(forum.id, forum);
+		const allForums = forumIdRows.map(f => allForumsMap.get(f.id));
+
+		// 5️⃣ Fetch dynamic fields fresh
+		const dynamicData = await db
+			.select({
+				id: forums.id,
+				viewCount: forums.viewCount,
+				likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
+				isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(forums)
+			.leftJoin(
+				forumLikes,
+				and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId)))
+			)
+			.where(inArray(forums.id, forumIdRows.map(f => f.id)))
+			.groupBy(forums.id, forumLikes.forumId);
+
+		const forumsWithMedia = allForums.map(f => {
+			const dynamic = dynamicData.find(d => d.id === f.id);
 			return {
 				...f,
 				viewCount: (dynamic?.viewCount ?? 0) + 1,
@@ -123,7 +138,7 @@ export const getAllForums = async (req: AuthenticatedRequest, res: Response) => 
 			};
 		});
 
-		return res.status(200).json({ forumsWithMedia, hasMore: forumsWithMedia.length === limit });
+		return res.status(200).json({ forumsWithMedia, hasMore: allForums.length === limit });
 	} catch (error) {
 		return res.status(500).json({
 			success: false,

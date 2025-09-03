@@ -9,12 +9,7 @@ import { deleteReply } from "./forum_replies.controller.js";
 import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 import { redis } from "../../../db/redis/redisConfig.js";
 
-interface AuthenticatedRequest extends Request {
-	user?: {
-		userId: string;
-		// add other user properties if needed
-	};
-}
+import { AuthenticatedRequest } from "../../utils/authenticatedRequest.js";
 
 export const getAllCommentsForAForum = async (req: AuthenticatedRequest, res: Response) => {
 	try {

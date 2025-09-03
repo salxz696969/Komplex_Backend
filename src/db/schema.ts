@@ -18,3 +18,4 @@ export * from "./models/user_saved_blogs.js";
 export * from "./models/user_saved_videos.js";
 export * from "./models/user_exercise_history.js";
 export * from "./models/user_video_history.js";
+export * from "./models/user_ai_history.js";

@@ -11,6 +11,8 @@ import videoRepliesRouter from "./video_replies.route.js";
 import videosRouter from "./videos.route.js";
 import userContentRouter from "./user-content.route.js";
 import testRouter from "./test.js";
+import geminiRouter from "./gemini.route.js";
+import aiHistoryRouter from "./aiHistory.route.js";
 
 const router = Router();
 
@@ -26,5 +28,7 @@ router.use("/video_replies", videoRepliesRouter);
 router.use("/videos", videosRouter);
 router.use("/user-content", userContentRouter);
 router.use("/test", testRouter);
+router.use("/gemini", geminiRouter);
+router.use("/ai-history", aiHistoryRouter);
 
 export default router;
