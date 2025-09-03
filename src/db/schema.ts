@@ -19,3 +19,4 @@ export * from "./models/user_saved_videos";
 export * from "./models/user_exercise_history";
 export * from "./models/user_video_history";
 export * from "./models/user_question_history";
+export * from "./models/refresh_tokens";

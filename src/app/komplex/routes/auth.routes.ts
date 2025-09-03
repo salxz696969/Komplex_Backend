@@ -1,66 +1,15 @@
-import { extendCookieTime } from "./../controllers/auth.controller";
+import { verifyFirebaseToken } from "./../../../middleware/auth";
 import express from "express";
-import googlePassport from "../../../config/passport/google";
-import microsoftPassport from "../../../config/passport/microsoft";
-import discordPassport from "../../../config/passport/discord";
 import {
-  handleOAuthSuccess,
-  handleLogin,
+  getCurrentUser,
   handleSignup,
-  getToken,
+  handleSocialLogIn,
 } from "../controllers/auth.controller";
 
 const router = express.Router();
 
-// DEFAULT ----------------------
-
-router.post("/login", handleLogin as any);
 router.post("/signup", handleSignup as any);
-
-// this is for getting the short lived cookie called when login or signup is completed with OAuth
-router.get("/mobile/token", getToken as any);
-router.get("/web/token", extendCookieTime as any);
-
-// GOOGLE ----------------------
-
-router.get(
-  "/google",
-  googlePassport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-router.get(
-  "/google/callback",
-  googlePassport.authenticate("google", {
-    failureRedirect: "http://localhost:4000/auth",
-    successRedirect: "http://localhost:4000",
-  }),
-  handleOAuthSuccess as any
-);
-
-// MICROSOFT ----------------------
-
-router.get("/microsoft", microsoftPassport.authenticate("microsoft"));
-
-router.get(
-  "/microsoft/callback",
-  microsoftPassport.authenticate("microsoft", {
-    failureRedirect: "http://localhost:4000/auth",
-    successRedirect: "http://localhost:4000",
-  }),
-  handleOAuthSuccess as any
-);
-
-// DISCORD ----------------------
-
-router.get("/discord", discordPassport.authenticate("discord"));
-
-router.get(
-  "/discord/callback",
-  discordPassport.authenticate("discord", {
-    failureRedirect: "http://localhost:4000/auth",
-    successRedirect: "http://localhost:4000",
-  }),
-  handleOAuthSuccess as any
-);
+router.post("/social-login", handleSocialLogIn as any);
+router.get("/me", verifyFirebaseToken as any, getCurrentUser as any);
 
 export default router;

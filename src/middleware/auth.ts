@@ -1,0 +1,22 @@
+import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from "../types/request";
+import admin from "../config/firebase/admin";
+
+export const verifyFirebaseToken = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  // verify and attach user to request
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Missing token" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = { userId: decoded.uid };
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token", error });
+  }
+};

@@ -5,6 +5,7 @@ import routes from "./app/komplex/routes/index";
 import adminRoutes from "./app/komplex.admin/routes/index";
 import passport from "./config/passport/google";
 import session from "express-session";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ dotenv.config();
 process.on("uncaughtException", (error) => {
   console.error("🚨 UNCAUGHT EXCEPTION:", error);
   console.error("Stack trace:", error.stack);
-  process.exit(1);
+  process.exit(1);  
 });
 
 process.on("unhandledRejection", (reason, promise) => {
@@ -32,8 +33,14 @@ app.use(
 );
 
 app.use(passport.initialize());
-app.use(cors());
+app.use(cors(
+  {
+    origin: "http://localhost:4000",
+    credentials: true,
+  }
+));
 app.use(express.json());
+app.use(cookieParser());
 
 // Enhanced error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {

@@ -6,13 +6,12 @@
 //     created_at TIMESTAMP
 // )
 
-import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "../schema";
 
 export const userOauth = pgTable("user_oauth", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  uid: text("uid").references(() => users.uid),
   provider: text("provider"),
-  providerId: text("provider_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -39,7 +39,17 @@ passport.use(
       try {
         console.log(profile);
         const existingUser = await db
-          .select()
+          .select({
+            id: users.id,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            isAdmin: users.isAdmin,
+            isVerified: users.isVerified,
+            phone: users.phone,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          })
           .from(users)
           .leftJoin(userOauth, eq(users.id, userOauth.userId))
           .where(
@@ -52,7 +62,7 @@ passport.use(
           .limit(1);
 
         if (existingUser.length > 0) {
-          return done(null, existingUser);
+          return done(null, existingUser[0]); // Return the user object
         }
 
         const [newUser] = await db
