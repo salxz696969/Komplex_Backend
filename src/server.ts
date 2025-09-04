@@ -13,7 +13,7 @@ dotenv.config();
 process.on("uncaughtException", (error) => {
   console.error("🚨 UNCAUGHT EXCEPTION:", error);
   console.error("Stack trace:", error.stack);
-  process.exit(1);  
+  process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
@@ -33,12 +33,12 @@ app.use(
 );
 
 app.use(passport.initialize());
-app.use(cors(
-  {
-    origin: "http://localhost:4000",
+app.use(
+  cors({
+    origin: ["http://localhost:4000", "http://localhost:3000"],
     credentials: true,
-  }
-));
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
