@@ -1,17 +1,16 @@
 import { Router } from "express";
 import {
-  deleteVideo,
-  getAllVideos,
-  getVideoById,
-  likeVideo,
-  postVideoPresigned,
-  saveVideo,
-  unlikeVideo,
-  unsaveVideo,
-  updateVideo,
-  getVideoExercise,
-  updateVideoPresignedUrl,
-  updateVideoExercise,
+	deleteVideo,
+	getAllVideos,
+	getVideoById,
+	likeVideo,
+	postVideoPresigned,
+	saveVideo,
+	unlikeVideo,
+	unsaveVideo,
+	getVideoExercise,
+	updateVideoPresignedUrl,
+	updateVideoExercise,
 } from "../controllers/videos.controller.js";
 // import { uploadVideoAndThumbnail } from "../../../middleware/upload.";
 const router = Router();

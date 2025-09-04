@@ -24,13 +24,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 const app = express();
 
-app.use(
-  session({
-    secret: process.env.JWT_SECRET!,
-    resave: false,
-    saveUninitialized: true,
-  })
-);
+
 
 app.use(
   cors({
@@ -39,7 +33,6 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(cookieParser());
 
 // Enhanced error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
