@@ -1,8 +1,8 @@
 import { Response } from "express";
 
-import { AuthenticatedRequest } from "../../../types/request";
-import { db } from "../../../db";
-import { users, videoLikes } from "../../../db/schema";
+import { AuthenticatedRequest } from "../../../types/request.js";
+import { db } from "../../../db/index.js";
+import { users, videoLikes } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
 
 export const getVideoLikes = async (

@@ -1,6 +1,5 @@
 import {
   pgTable,
-  varchar,
   text,
   date,
   boolean,

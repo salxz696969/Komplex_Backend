@@ -5,8 +5,8 @@ import {
   questions,
   choices,
   exerciseQuestionHistory,
-} from "../../../db/schema";
-import { db } from "../../../db";
+} from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
 
 export const getExercises = async (req: Request, res: Response) => {

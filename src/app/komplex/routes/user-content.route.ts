@@ -2,35 +2,20 @@ import { Router } from "express";
 import {
   getAllUserBlogs,
   getBlogById,
-  postBlog,
-  saveBlog,
-  unsaveBlog,
-  updateBlog,
-  deleteBlog,
-} from "../controllers/user-content/user-content-blogs.controller";
-import {
-  getAllForums,
-  getForumById,
-  likeForum,
-  postForum,
-  unlikeForum,
-  updateForum,
-  deleteForum,
-} from "../controllers/user-content/user-content-forums.controller";
-import {
-  getExerciseDashboard,
-  getExerciseHistory,
-  getExercises,
-  getExerciseById,
-} from "../controllers/user-content/user-content-exercises.controller";
-import { getUserContentDashboard } from "../controllers/user-content/user-content-dashboard.controller";
-import { uploadImages } from "../../../middleware/upload";
-import {
-  getAllVideos,
-  getUserVideoHistory,
-  getVideoById,
-} from "../controllers/user-content/user-content-videos.controller";
-import { getVideoLikes } from "../controllers/video_likes.controller";
+} from "../controllers/user-content-blogs.controller.js";
+import { getUserContentDashboard  } from "../controllers/user-content/user-content-dashboard.controller.js";
+import { uploadImages } from "../../../middleware/upload.js";
+import { deleteBlog, postBlog, saveBlog, unsaveBlog, updateBlog } from "../controllers/user-content/user-content-blogs.controller.js";
+import { postForum } from "../controllers/user-content/user-content-forums.controller.js";
+import { getAllForums, getForumById } from "../controllers/forums.controller.js";
+import { likeForum, unlikeForum } from "../controllers/forums.controller.js";
+import { updateForum } from "../controllers/forums.controller.js";
+import { deleteForum } from "../controllers/forums.controller.js";
+import { getExerciseById, getExerciseDashboard, getExerciseHistory } from "../controllers/user-content/user-content-exercises.controller.js";
+import { getExercises } from "../controllers/exercises.controller.js";
+import { getAllVideos, getVideoById } from "../controllers/videos.controller.js";
+import { getUserVideoHistory } from "../controllers/user-content/user-content-videos.controller.js";
+import { getVideoLikes } from "../controllers/video_likes.controller.js";
 
 const router = Router();
 
@@ -55,7 +40,7 @@ router.delete("/forums/:id", deleteForum as any);
 router.get("/exercises/history", getExerciseHistory as any);
 router.get("/exercises/dashboard", getExerciseDashboard as any);
 router.get("/exercises", getExercises as any);
-router.get("/exercises/:id", getExerciseById as any);
+router.get("/exercises/:id", getExerciseById);
 
 router.get("/videos", getAllVideos as any);
 router.get("/videos/:id", getVideoById as any);

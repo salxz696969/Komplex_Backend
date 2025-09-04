@@ -6,15 +6,15 @@ import {
   forumReplies,
   forums,
   users,
-} from "../../../db/schema";
-import { db } from "../../../db/index";
+} from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from './../../../db/cloudinary/cloundinaryFunction';
-import { forumCommentMedias } from "../../../db/models/forum_comment_media";
-import { forumReplyMedias } from "../../../db/models/forum_reply_media";
+} from './../../../db/cloudinary/cloundinaryFunction.js';
+import { forumCommentMedias } from "../../../db/models/forum_comment_media.js";
+import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
 import { sql } from "drizzle-orm";
 
 interface AuthenticatedRequest extends Request {

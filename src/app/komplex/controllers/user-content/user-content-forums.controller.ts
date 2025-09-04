@@ -6,20 +6,20 @@ import {
   forumReplies,
   forums,
   users,
-} from "../../../../db/schema";
-import { db } from "../../../../db/index";
+} from "../../../../db/schema.js";
+import { db } from "../../../../db/index.js";
 import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from "../../../../db/cloudinary/cloundinaryFunction";
-import { deleteReply } from "../forum_replies.controller";
-import { deleteComment } from "../forum_comments.controller";
-import { AuthenticatedRequest } from "../../../../types/request";
+} from "../../../../db/cloudinary/cloundinaryFunction.js";
+import { deleteReply } from "../forum_replies.controller.js";
+import { deleteComment } from "../forum_comments.controller.js";
+import { AuthenticatedRequest } from "../../../../types/request.js";
 import {
   deleteFromCloudflare,
   uploadImageToCloudflare,
-} from "../../../../db/cloudflare/cloudflareFunction";
+} from "../../../../db/cloudflare/cloudflareFunction.js";
 import crypto from "crypto";
 
 export const getAllForums = async (

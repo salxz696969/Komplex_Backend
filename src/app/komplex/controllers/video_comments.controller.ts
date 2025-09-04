@@ -1,16 +1,18 @@
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { users, videoReplies } from "../../../db/schema";
-import { videoComments } from "../../../db/models/video_comments";
-import { videoCommentMedias } from "../../../db/models/video_comment_medias";
-import { videoCommentLike } from "../../../db/models/video_comment_like";
-import { deleteVideoReply } from "./video_replies.controller";
+import { db } from "../../../db/index.js";
+import { users, videoReplies } from "../../../db/schema.js";
+import { videoComments } from "../../../db/models/video_comments.js";
+import { videoCommentMedias } from "../../../db/models/video_comment_medias.js";
+import { videoCommentLike } from "../../../db/models/video_comment_like.js";
+import { deleteVideoReply } from "./video_replies.controller.js";
 import {
   deleteFromCloudflare,
   uploadVideoToCloudflare,
-} from "../../../db/cloudflare/cloudflareFunction";
-import { AuthenticatedRequest } from "../../../types/request";
+} from "../../../db/cloudflare/cloudflareFunction.js";
+import { redis } from "../../../db/redis/redisConfig.js";
+
+import { AuthenticatedRequest } from "../../../types/request.js";
 
 export const getAllVideoCommentsForAVideo = async (
   req: AuthenticatedRequest,
@@ -18,26 +20,31 @@ export const getAllVideoCommentsForAVideo = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user ?? { userId: 1 };
+    const { page } = req.query;
+    let pageNumber = Number(page);
+    if (!page) {
+      pageNumber = 1;
+    }
+    const limit = 20;
+    const offset = (pageNumber - 1) * limit;
 
-    const comments = await db
+    const cacheKey = `videoComments:video:${id}:page:${pageNumber}`;
+    const cached = await redis.get(cacheKey);
+
+    let cachedComments: any[] = [];
+    if (cached) {
+      cachedComments = JSON.parse(cached).commentsWithMedia;
+    }
+
+    // --- Fetch dynamic fields fresh ---
+    const dynamicData = await db
       .select({
         id: videoComments.id,
-        userId: videoComments.userId,
-        videoId: videoComments.videoId,
-        description: videoComments.description,
-        createdAt: videoComments.createdAt,
-        updatedAt: videoComments.updatedAt,
-        mediaUrl: videoCommentMedias.url,
-        mediaType: videoCommentMedias.mediaType,
-        username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        likeCount: sql`COUNT(DISTINCT ${videoCommentLike.videoCommentId})`,
         isLike: sql`CASE WHEN ${videoCommentLike.videoCommentId} IS NOT NULL THEN true ELSE false END`,
       })
       .from(videoComments)
-      .leftJoin(
-        videoCommentMedias,
-        eq(videoComments.id, videoCommentMedias.videoCommentId)
-      )
       .leftJoin(
         videoCommentLike,
         and(
@@ -45,39 +52,102 @@ export const getAllVideoCommentsForAVideo = async (
           eq(videoCommentLike.userId, Number(userId))
         )
       )
-      .leftJoin(users, eq(users.id, videoComments.userId))
-      .where(eq(videoComments.videoId, Number(id)));
+      .where(eq(videoComments.videoId, Number(id)))
+      .groupBy(videoComments.id, videoCommentLike.videoCommentId)
+      .offset(offset)
+      .limit(limit);
 
-    if (!comments || comments.length === 0) {
-      return res.status(200).json([]);
+    // If no cache → query full comments and cache static part
+    if (!cachedComments.length) {
+      const commentRows = await db
+        .select({
+          id: videoComments.id,
+          userId: videoComments.userId,
+          videoId: videoComments.videoId,
+          description: videoComments.description,
+          createdAt: videoComments.createdAt,
+          updatedAt: videoComments.updatedAt,
+          mediaUrl: videoCommentMedias.url,
+          mediaType: videoCommentMedias.mediaType,
+          username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        })
+        .from(videoComments)
+        .leftJoin(
+          videoCommentMedias,
+          eq(videoComments.id, videoCommentMedias.videoCommentId)
+        )
+        .leftJoin(users, eq(users.id, videoComments.userId))
+        .leftJoin(
+          videoCommentLike,
+          eq(videoComments.id, videoCommentLike.videoCommentId)
+        )
+        .where(eq(videoComments.videoId, Number(id)))
+        .groupBy(
+          videoComments.id,
+          videoComments.userId,
+          videoComments.videoId,
+          videoComments.description,
+          videoComments.createdAt,
+          videoComments.updatedAt,
+          videoCommentMedias.url,
+          videoCommentMedias.mediaType,
+          users.firstName,
+          users.lastName
+        )
+        .orderBy(
+          desc(sql`COUNT(DISTINCT ${videoCommentLike.id})`),
+          desc(
+            sql`CASE WHEN DATE(${videoComments.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
+          ),
+          desc(videoComments.updatedAt)
+        )
+        .offset(offset)
+        .limit(limit);
+
+      cachedComments = Object.values(
+        commentRows.reduce((acc, comment) => {
+          if (!acc[comment.id]) {
+            acc[comment.id] = {
+              id: comment.id,
+              userId: comment.userId,
+              videoId: comment.videoId,
+              description: comment.description,
+              createdAt: comment.createdAt,
+              updatedAt: comment.updatedAt,
+              media: [] as { url: string; type: string }[],
+              username: comment.username,
+            };
+          }
+          if (comment.mediaUrl) {
+            acc[comment.id].media.push({
+              url: comment.mediaUrl,
+              type: comment.mediaType,
+            });
+          }
+          return acc;
+        }, {} as { [key: number]: any })
+      );
+
+      await redis.set(
+        cacheKey,
+        JSON.stringify({ commentsWithMedia: cachedComments }),
+        { EX: 60 }
+      );
     }
 
-    const commentsWithMedia = Object.values(
-      comments.reduce((acc, comment) => {
-        if (!acc[comment.id]) {
-          acc[comment.id] = {
-            id: comment.id,
-            userId: comment.userId,
-            videoId: comment.videoId,
-            description: comment.description,
-            createdAt: comment.createdAt,
-            updatedAt: comment.updatedAt,
-            media: [] as { url: string; type: string }[],
-            username: comment.username,
-            isLike: !!comment.isLike,
-          };
-        }
-        if (comment.mediaUrl) {
-          acc[comment.id].media.push({
-            url: comment.mediaUrl,
-            type: comment.mediaType,
-          });
-        }
-        return acc;
-      }, {} as { [key: number]: any })
-    ) as Record<number, any>[];
+    // Merge dynamic data with cached static data
+    const commentsWithMedia = cachedComments.map((c) => {
+      const dynamic = dynamicData.find((d) => d.id === c.id);
+      return {
+        ...c,
+        likeCount: Number(dynamic?.likeCount) || 0,
+        isLike: !!dynamic?.isLike,
+      };
+    });
 
-    return res.status(200).json(commentsWithMedia);
+    return res
+      .status(200)
+      .json({ commentsWithMedia, hasMore: commentsWithMedia.length === limit });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -94,6 +164,7 @@ export const postVideoComment = async (
     const { userId } = req.user ?? { userId: 1 };
     const { description } = req.body;
     const { id } = req.params;
+    const limit = 20;
 
     if (!userId || !id || !description) {
       return res
@@ -142,73 +213,64 @@ export const postVideoComment = async (
       }
     }
 
+    const [username] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+    const videoCommentWithMedia = {
+      id: insertComment.id,
+      userId: insertComment.userId,
+      description: insertComment.description,
+      createdAt: insertComment.createdAt,
+      updatedAt: insertComment.updatedAt,
+      username: username.firstName + " " + username.lastName,
+      media: newCommentMedia.map((m) => ({
+        url: m.url,
+        type: m.mediaType,
+      })),
+    };
+
+    let { currentCommentAmount, lastPage } = JSON.parse(
+      (await redis.get(`videoComments:video:${id}:lastPage`)) ||
+        JSON.stringify({ currentCommentAmount: 0, lastPage: 1 })
+    );
+
+    // Determine which page to add the new comment
+    if (currentCommentAmount >= limit) {
+      lastPage += 1;
+      currentCommentAmount = 1;
+    } else {
+      currentCommentAmount += 1;
+    }
+
+    const cacheKey = `videoComments:video:${id}:page:${lastPage}`;
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      parsed.commentsWithMedia.push(videoCommentWithMedia);
+      await redis.set(cacheKey, JSON.stringify(parsed), { EX: 600 });
+    } else {
+      await redis.set(
+        cacheKey,
+        JSON.stringify({ commentsWithMedia: [videoCommentWithMedia] }),
+        { EX: 600 }
+      );
+    }
+
+    await redis.set(
+      `videoComments:video:${id}:lastPage`,
+      JSON.stringify({ currentCommentAmount, lastPage }),
+      {
+        EX: 600,
+      }
+    );
+
     return res.status(201).json({
       success: true,
       comment: insertComment,
       newCommentMedia,
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const likeVideoComment = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    const like = await db
-      .insert(videoCommentLike)
-      .values({
-        userId: Number(userId),
-        videoCommentId: Number(id),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    return res.status(200).json({ like });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const unlikeVideoComment = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    const unlike = await db
-      .delete(videoCommentLike)
-      .where(
-        and(
-          eq(videoCommentLike.userId, Number(userId)),
-          eq(videoCommentLike.videoCommentId, Number(id))
-        )
-      )
-      .returning();
-
-    return res.status(200).json({ unlike });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -327,6 +389,24 @@ export const updateVideoComment = async (
       .where(eq(videoComments.id, Number(id)))
       .returning();
 
+    const pattern = `videoComments:video:${updateComment.videoId}:page:*`;
+    let cursor = "0";
+
+    do {
+      const scanResult = await redis.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100,
+      });
+      cursor = scanResult.cursor;
+      const keys = scanResult.keys;
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map((k) => redis.del(k)));
+      }
+    } while (cursor !== "0");
+
+    await redis.del(`videoComments:video:${updateComment.videoId}:lastPage`);
+
     return res
       .status(200)
       .json({ updateComment, newCommentMedia, deleteMedia });
@@ -408,7 +488,6 @@ export const deleteVideoCommentInternal = async (
       );
     }
 
-    // First, select media to get urlForDeletion
     const mediaToDelete = await db
       .select({ urlForDeletion: videoCommentMedias.urlForDeletion })
       .from(videoCommentMedias)
@@ -438,6 +517,26 @@ export const deleteVideoCommentInternal = async (
       )
       .returning();
 
+    const pattern = `videoComments:video:${deletedComment[0].videoId}:page:*`;
+    let cursor = "0";
+
+    do {
+      const scanResult = await redis.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100,
+      });
+      cursor = scanResult.cursor;
+      const keys = scanResult.keys;
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map((k) => redis.del(k)));
+      }
+    } while (cursor !== "0");
+
+    await redis.del(
+      `videoComments:video:${deletedComment[0].videoId}:lastPage`
+    );
+
     return { deletedComment, deletedMedia, deletedLikes, deleteReply };
   }
 
@@ -449,7 +548,6 @@ export const deleteVideoCommentInternal = async (
       .where(eq(videoComments.videoId, videoId));
     const commentIds = getCommentIdsByVideoId.map((c) => c.id);
 
-    // First, select media to get urlForDeletion
     const mediaToDelete = await db
       .select({ urlForDeletion: videoCommentMedias.urlForDeletion })
       .from(videoCommentMedias)
@@ -493,6 +591,88 @@ export const deleteVideoCommentInternal = async (
       )
       .returning();
 
+    const pattern = `videoComments:video:${deletedComment[0].videoId}:page:*`;
+    let cursor = "0";
+
+    do {
+      const scanResult = await redis.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100,
+      });
+      cursor = scanResult.cursor;
+      const keys = scanResult.keys;
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map((k) => redis.del(k)));
+      }
+    } while (cursor !== "0");
+
+    await redis.del(
+      `videoComments:video:${deletedComment[0].videoId}:lastPage`
+    );
+
     return { deletedComment, deletedMedia, deletedLikes };
+  }
+};
+
+export const likeVideoComment = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user ?? { userId: 1 };
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const like = await db
+      .insert(videoCommentLike)
+      .values({
+        userId: Number(userId),
+        videoCommentId: Number(id),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    return res.status(200).json({ like });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const unlikeVideoComment = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user ?? { userId: 1 };
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const unlike = await db
+      .delete(videoCommentLike)
+      .where(
+        and(
+          eq(videoCommentLike.userId, Number(userId)),
+          eq(videoCommentLike.videoCommentId, Number(id))
+        )
+      )
+      .returning();
+
+    return res.status(200).json({ unlike });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
   }
 };

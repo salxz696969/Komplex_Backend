@@ -3,7 +3,7 @@ import {
   getExercise,
   getExercises,
   submitExercise,
-} from "../controllers/exercises.controller";
+} from "../controllers/exercises.controller.js";
 
 const router = Router();
 

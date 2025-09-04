@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
-import { feedbacks } from "../../../db/models/feedbacks";
+import { db } from "../../../db/index.js";
+import { feedbacks } from "../../../db/models/feedbacks.js";
 // import { feedbackMedia } from "../../../db/models/feedback_media";
 
 export const createFeedback = async (req: Request, res: Response) => {

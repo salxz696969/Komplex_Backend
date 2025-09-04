@@ -1,6 +1,6 @@
 import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
-import { mediaTypeEnum } from "./media_type";
-import { blogs } from "./blogs";
+import { mediaTypeEnum } from "./media_type.js";
+import { blogs } from "./blogs.js";
 export const blogMedia = pgTable("blog_media", {
 	id: serial("id").primaryKey(),
 	blogId: integer("blog_id").references(() => blogs.id),

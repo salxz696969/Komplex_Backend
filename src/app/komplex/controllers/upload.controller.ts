@@ -1,6 +1,6 @@
-import { AuthenticatedRequest } from "../../../types/request";
+import { AuthenticatedRequest } from "../../../types/request.js";
 import { Response } from "express";
-import { getSignedUrlFromCloudflare } from "../../../db/cloudflare/cloudflareFunction";
+import { getSignedUrlFromCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
 
 export const getSignedUrl = async (
   req: AuthenticatedRequest,

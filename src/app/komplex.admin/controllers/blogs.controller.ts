@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction";
-import { db } from "../../../db";
-import { blogs, users, userSavedBlogs } from "../../../db/schema";
-import { and, eq, sql } from "drizzle-orm";
-import { blogMedia } from "../../../db/models/blog_media";
+} from "../../../db/cloudinary/cloundinaryFunction.js";
+import { db } from "../../../db/index.js";
+import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
+import { and, eq } from "drizzle-orm";
+import { blogMedia } from "../../../db/models/blog_media.js";
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;

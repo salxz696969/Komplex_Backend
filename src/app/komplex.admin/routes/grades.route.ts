@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getGrades } from "../controllers/grades.controller";
+import { getGrades } from "../controllers/grades.controller.js";
 const router = Router();
 
 router.get("/", getGrades);

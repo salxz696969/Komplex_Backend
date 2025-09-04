@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadImages } from "../../../middleware/upload";
+import { uploadImages } from "../../../middleware/upload.js";
 import {
   getAllVideoRepliesForAComment,
   postForumVideoReply,
@@ -7,7 +7,7 @@ import {
   deleteForumVideoReply,
   likeForumVideoReply,
   unlikeForumVideoReply,
-} from "../controllers/video_replies.controller";
+} from "../controllers/video_replies.controller.js";
 
 const router = Router();
 
@@ -15,10 +15,18 @@ const router = Router();
 router.get("/:id", getAllVideoRepliesForAComment as any);
 
 // Post a reply to a video comment (with media)
-router.post("/:id", uploadImages.array("images", 4), postForumVideoReply as any);
+router.post(
+  "/:id",
+  uploadImages.array("images", 4),
+  postForumVideoReply as any
+);
 
 // Update a reply (with media)
-router.patch("/:id", uploadImages.array("images", 4), updateForumVideoReply as any);
+router.patch(
+  "/:id",
+  uploadImages.array("images", 4),
+  updateForumVideoReply as any
+);
 
 // Delete a reply
 router.delete("/:id", deleteForumVideoReply as any);

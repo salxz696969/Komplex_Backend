@@ -4,7 +4,7 @@ import {
   getForumById,
   updateForum,
   deleteForum,
-} from "../controllers/forums.controller";
+} from "../controllers/forums.controller.js";
 const router = Router();
 
 // Add your route handlers here

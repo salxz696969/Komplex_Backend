@@ -1,11 +1,5 @@
-import {
-  pgTable,
-  varchar,
-  integer,
-  timestamp,
-  serial,
-} from "drizzle-orm/pg-core";
-import { users, videos } from "../schema";
+import { pgTable, integer, timestamp, serial } from "drizzle-orm/pg-core";
+import { users, videos } from "../schema.js";
 
 export const userVideoHistory = pgTable(
   "user_video_history",

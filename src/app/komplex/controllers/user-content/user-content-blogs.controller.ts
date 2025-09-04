@@ -1,11 +1,11 @@
 import { and, eq, sql } from "drizzle-orm";
-import { blogs, users, userSavedBlogs } from "../../../../db/schema";
-import { db } from "../../../../db";
+import { blogs, users, userSavedBlogs } from "../../../../db/schema.js";
+import { db } from "../../../../db/index.js"; 
 import { Request, Response } from "express";
-import { blogMedia } from "../../../../db/models/blog_media";
-import { AuthenticatedRequest } from "../../../../types/request";
-import { deleteFromCloudflare } from "../../../../db/cloudflare/cloudflareFunction";
-import { uploadImageToCloudflare } from "../../../../db/cloudflare/cloudflareFunction";
+import { blogMedia } from "../../../../db/models/blog_media.js";
+import { AuthenticatedRequest } from "../../../../types/request.js";
+import { deleteFromCloudflare } from "../../../../db/cloudflare/cloudflareFunction.js";
+import { uploadImageToCloudflare } from "../../../../db/cloudflare/cloudflareFunction.js";
 import crypto from "crypto";
 
 export const getAllUserBlogs = async (req: Request, res: Response) => {

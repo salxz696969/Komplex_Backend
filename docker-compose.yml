@@ -1,0 +1,24 @@
+services:
+    app:
+        build: .
+        image: komplex-backend
+        ports:
+            - "3000:3000"
+        environment:
+            DATABASE_URL: ${DATABASE_URL}
+            DATABASE_USER: ${DATABASE_USER}
+            DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+            DATABASE_NAME: ${DATABASE_NAME}
+            DATABASE_PORT: ${DATABASE_PORT}
+            R2_TOKEN_VALUE: ${R2_TOKEN_VALUE}
+            R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+            R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+            R2_ENDPOINT: ${R2_ENDPOINT}
+            R2_PHOTO_PUBLIC_URL: ${R2_PHOTO_PUBLIC_URL}
+            R2_VIDEO_PUBLIC_URL: ${R2_VIDEO_PUBLIC_URL}
+            REDIS_USERNAME: ${REDIS_USERNAME}
+            REDIS_PASSWORD: ${REDIS_PASSWORD}
+            REDIS_HOST: ${REDIS_HOST}
+            REDIS_PORT: ${REDIS_PORT}
+
+volumes: {}

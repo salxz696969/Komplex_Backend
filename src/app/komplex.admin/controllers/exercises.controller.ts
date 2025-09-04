@@ -1,11 +1,11 @@
 import { avg, count, eq, inArray, sum } from "drizzle-orm";
-import { db } from "../../../db";
+import { db } from "../../../db/index.js";
 import {
   choices,
   exercises,
   questions,
   userExerciseHistory,
-} from "../../../db/schema";
+} from "../../../db/schema.js";
 
 import { Request, Response } from "express";
 import { and, sql } from "drizzle-orm";

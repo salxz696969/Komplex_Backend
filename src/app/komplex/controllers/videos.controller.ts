@@ -1,109 +1,93 @@
 import { Request, Response } from "express";
-import { db } from "../../../db";
+import { db } from "../../../db/index.js";
+import { blogs, choices, exercises, questions as questionsTable, users, userSavedBlogs, userSavedVideos, userVideoHistory, videoComments, videoLikes, videos } from "../../../db/schema.js";
+import { and, eq, sql, desc, inArray } from "drizzle-orm";
+import { deleteVideoCommentInternal } from "./video_comments.controller.js";
 import {
-  blogs,
-  exercises,
-  users,
-  userSavedBlogs,
-  userSavedVideos,
-  userVideoHistory,
-  videoComments,
-  videoLikes,
-  videos,
-  questions as questionsTable,
-  choices,
-} from "../../../db/schema";
-import { and, eq, sql, desc } from "drizzle-orm";
-import { deleteVideoCommentInternal } from "./video_comments.controller";
-import {
-  deleteFromCloudflare,
-  uploadImageToCloudflare,
-  uploadVideoToCloudflare,
-} from "../../../db/cloudflare/cloudflareFunction";
+	deleteFromCloudflare,
+	uploadImageToCloudflare,
+	uploadVideoToCloudflare,
+} from "../../../db/cloudflare/cloudflareFunction.js";
 import fs from "fs";
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    // add other user properties if needed
-  };
-}
+import { redis } from "../../../db/redis/redisConfig.js";
+import { AuthenticatedRequest } from "../../../types/request.js";
 
-export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
-  let videoFile: Express.Multer.File | undefined;
-  let thumbnailFile: Express.Multer.File | undefined;
+// export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
+//   let videoFile: Express.Multer.File | undefined;
+//   let thumbnailFile: Express.Multer.File | undefined;
 
-  try {
-    const userId = req.user?.userId ?? "1";
-    const { title, description, topic, type } = req.body;
+//   try {
+//     const userId = req.user?.userId ?? "1";
+//     const { title, description, topic, type } = req.body;
 
-    if (!title || !description || !topic || !type) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
-    }
+//     if (!title || !description || !topic || !type) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Missing required fields" });
+//     }
 
-    if (
-      req.files &&
-      typeof req.files === "object" &&
-      "video" in req.files &&
-      "image" in req.files
-    ) {
-      videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] })
-        .video[0];
-      thumbnailFile = (
-        req.files as { [fieldname: string]: Express.Multer.File[] }
-      ).image[0];
-    } else {
-      return res.status(400).json({ error: "Files not uploaded correctly" });
-    }
+//     if (
+//       req.files &&
+//       typeof req.files === "object" &&
+//       "video" in req.files &&
+//       "image" in req.files
+//     ) {
+//       videoFile = (req.files as { [fieldname: string]: Express.Multer.File[] })
+//         .video[0];
+//       thumbnailFile = (
+//         req.files as { [fieldname: string]: Express.Multer.File[] }
+//       ).image[0];
+//     } else {
+//       return res.status(400).json({ error: "Files not uploaded correctly" });
+//     }
 
-    const uniqueKey = `${videoFile.filename}-${crypto.randomUUID()}-${
-      thumbnailFile.filename
-    }`;
+//     const uniqueKey = `${videoFile.filename}-${crypto.randomUUID()}-${
+//       thumbnailFile.filename
+//     }`;
 
-    const videoUrl = await uploadVideoToCloudflare(
-      uniqueKey,
-      await fs.promises.readFile(videoFile.path),
-      videoFile.mimetype
-    );
+//     const videoUrl = await uploadVideoToCloudflare(
+//       uniqueKey,
+//       await fs.promises.readFile(videoFile.path),
+//       videoFile.mimetype
+//     );
 
-    const thumbnailUrl = await uploadImageToCloudflare(
-      uniqueKey,
-      await fs.promises.readFile(thumbnailFile.path),
-      thumbnailFile.mimetype
-    );
+//     const thumbnailUrl = await uploadImageToCloudflare(
+//       uniqueKey,
+//       await fs.promises.readFile(thumbnailFile.path),
+//       thumbnailFile.mimetype
+//     );
 
-    const newVideo = await db
-      .insert(videos)
-      .values({
-        videoUrlForDeletion: uniqueKey,
-        videoUrl,
-        title,
-        description,
-        duration: 100,
-        topic,
-        type,
-        viewCount: 0,
-        thumbnailUrl,
-        thumbnailUrlForDeletion: uniqueKey,
-        userId: Number(userId),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+//     const newVideo = await db
+//       .insert(videos)
+//       .values({
+//         videoUrlForDeletion: uniqueKey,
+//         videoUrl,
+//         title,
+//         description,
+//         duration: 100,
+//         topic,
+//         type,
+//         viewCount: 0,
+//         thumbnailUrl,
+//         thumbnailUrlForDeletion: uniqueKey,
+//         userId: Number(userId),
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+//       })
+//       .returning();
 
-    return res.status(201).json({ success: true, video: newVideo });
-  } catch (error) {
-    console.error("Error uploading file or saving media:", error);
-    return res
-      .status(500)
-      .json({ success: false, error: (error as Error).message });
-  } finally {
-    if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
-    if (thumbnailFile)
-      await fs.promises.unlink(thumbnailFile.path).catch(() => {});
-  }
-};
+//     return res.status(201).json({ success: true, video: newVideo });
+//   } catch (error) {
+//     console.error("Error uploading file or saving media:", error);
+//     return res
+//       .status(500)
+//       .json({ success: false, error: (error as Error).message });
+//   } finally {
+//     if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
+//     if (thumbnailFile)
+//       await fs.promises.unlink(thumbnailFile.path).catch(() => {});
+//   }
+// };
 
 export const postVideoPresigned = async (
   req: AuthenticatedRequest,
@@ -599,24 +583,64 @@ export const updateVideo = async (req: AuthenticatedRequest, res: Response) => {
       updateData.thumbnailUrlForDeletion = uniqueKey;
     }
 
-    const updateVideo = await db
-      .update(videos)
-      .set(updateData)
-      .where(eq(videos.id, Number(id)))
-      .returning();
+		const [updateVideoResult] = await db
+			.update(videos)
+			.set(updateData)
+			.where(eq(videos.id, Number(id)))
+			.returning();
 
-    return res.status(200).json({ success: true, updateVideo });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  } finally {
-    // cleanup temp files
-    if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
-    if (thumbnailFile)
-      await fs.promises.unlink(thumbnailFile.path).catch(() => {});
-  }
+		// Fetch updated video with media and username
+		const video = await db
+			.select({
+				id: videos.id,
+				userId: videos.userId,
+				title: videos.title,
+				description: videos.description,
+				type: videos.type,
+				topic: videos.topic,
+				duration: videos.duration,
+				videoUrl: videos.videoUrl,
+				thumbnailUrl: videos.thumbnailUrl,
+				createdAt: videos.createdAt,
+				updatedAt: videos.updatedAt,
+				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				viewCount: videos.viewCount,
+			})
+			.from(videos)
+			.leftJoin(users, eq(videos.userId, users.id))
+			.where(eq(videos.id, Number(id)));
+
+		const videoWithMedia = {
+			id: video[0].id,
+			userId: video[0].userId,
+			title: video[0].title,
+			description: video[0].description,
+			type: video[0].type,
+			topic: video[0].topic,
+			duration: video[0].duration,
+			videoUrl: video[0].videoUrl,
+			thumbnailUrl: video[0].thumbnailUrl,
+			createdAt: video[0].createdAt,
+			updatedAt: video[0].updatedAt,
+			username: video[0].username,
+			viewCount: video[0].viewCount,
+		};
+
+		// Update Redis cache
+		await redis.del(`videos:${id}`);
+		await redis.set(`videos:${id}`, JSON.stringify(videoWithMedia), { EX: 600 });
+
+		return res.status(200).json({ success: true, updateVideo: updateVideoResult });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	} finally {
+		// cleanup temp files
+		if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
+		if (thumbnailFile) await fs.promises.unlink(thumbnailFile.path).catch(() => {});
+	}
 };
 
 export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
@@ -696,20 +720,23 @@ export const deleteVideo = async (req: AuthenticatedRequest, res: Response) => {
       .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
       .returning();
 
-    return res.status(200).json({
-      success: true,
-      message: "Video deleted successfully",
-      deletedVideo,
-      deletedLikes,
-      deletedSaves,
-      deleteComments,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
+		// Remove from Redis cache
+		await redis.del(`videos:${id}`);
+
+		return res.status(200).json({
+			success: true,
+			message: "Video deleted successfully",
+			deletedVideo,
+			deletedLikes,
+			deletedSaves,
+			deleteComments,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
 };
 
 export const getVideoExercise = async (
@@ -742,66 +769,6 @@ export const getVideoExercise = async (
     }
 
     return res.status(200).json(exerciseQuestionsWithChoices);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const updateVideoPresignedUrl = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
-    //   // Update video data
-    //   await axios.put(`http://localhost:6969/videos/${video.id}`, {
-    // 	title: formData.title,
-    // 	description: formData.description,
-    // 	videoKey: videoKey,
-    // 	thumbnailKey: thumbnailKey,
-    // });
-
-    const { title, description, videoKey, thumbnailKey } = req.body;
-
-    const videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
-    const thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
-
-    const [video] = await db
-      .select()
-      .from(videos)
-      .where(eq(videos.id, Number(id)))
-      .limit(1);
-
-    if (!video) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Video not found" });
-    }
-
-    // delete video from cloudflare
-    deleteFromCloudflare("komplex-video", video.videoUrlForDeletion ?? "");
-
-    // delete thumbnail from cloudflare
-    deleteFromCloudflare("komplex-image", video.thumbnailUrlForDeletion ?? "");
-
-    await db
-      .update(videos)
-      .set({
-        title,
-        description,
-        videoUrl: videoUrl,
-        thumbnailUrl: thumbnailUrl,
-        videoUrlForDeletion: videoKey,
-        thumbnailUrlForDeletion: thumbnailKey,
-        updatedAt: new Date(),
-      })
-      .where(eq(videos.id, Number(id)));
-
-    return res.status(200).json({ success: true, video });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -892,6 +859,66 @@ export const updateVideoExercise = async (
         }
       }
     }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const updateVideoPresignedUrl = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user ?? { userId: "1" };
+    //   // Update video data
+    //   await axios.put(`http://localhost:6969/videos/${video.id}`, {
+    // 	title: formData.title,
+    // 	description: formData.description,
+    // 	videoKey: videoKey,
+    // 	thumbnailKey: thumbnailKey,
+    // });
+
+    const { title, description, videoKey, thumbnailKey } = req.body;
+
+    const videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
+    const thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
+
+    const [video] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.id, Number(id)))
+      .limit(1);
+
+    if (!video) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Video not found" });
+    }
+
+    // delete video from cloudflare
+    deleteFromCloudflare("komplex-video", video.videoUrlForDeletion ?? "");
+
+    // delete thumbnail from cloudflare
+    deleteFromCloudflare("komplex-image", video.thumbnailUrlForDeletion ?? "");
+
+    await db
+      .update(videos)
+      .set({
+        title,
+        description,
+        videoUrl: videoUrl,
+        thumbnailUrl: thumbnailUrl,
+        videoUrlForDeletion: videoKey,
+        thumbnailUrlForDeletion: thumbnailKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(videos.id, Number(id)));
+
+    return res.status(200).json({ success: true, video });
   } catch (error) {
     return res.status(500).json({
       success: false,

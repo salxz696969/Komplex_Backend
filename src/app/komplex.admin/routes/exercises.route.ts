@@ -5,8 +5,8 @@ import {
   getExercise,
   getExerciseDashboard,
   getExercises,
-  updateExercise,
-} from "../controllers/exercises.controller";
+  updateExercise
+} from "../controllers/exercises.controller.js";
 const router = Router();
 
 router.get("/", getExercises);

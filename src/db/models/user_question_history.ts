@@ -1,6 +1,6 @@
 import { pgTable, serial, integer, boolean } from "drizzle-orm/pg-core";
-import { userExerciseHistory } from "./user_exercise_history";
-import { questions } from "./questions";
+import { userExerciseHistory } from "./user_exercise_history.js";
+import { questions  } from "../schema.js";
 
 export const exerciseQuestionHistory = pgTable("exercise_question_history", {
   id: serial("id").primaryKey(),

@@ -4,7 +4,6 @@ import {
   getAllVideos,
   getVideoById,
   likeVideo,
-  postVideo,
   postVideoPresigned,
   saveVideo,
   unlikeVideo,
@@ -13,8 +12,8 @@ import {
   getVideoExercise,
   updateVideoPresignedUrl,
   updateVideoExercise,
-} from "../controllers/videos.controller";
-import { uploadVideoAndThumbnail } from "../../../middleware/upload";
+} from "../controllers/videos.controller.js";
+// import { uploadVideoAndThumbnail } from "../../../middleware/upload.";
 const router = Router();
 
 // Add your route handlers here

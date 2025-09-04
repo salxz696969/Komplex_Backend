@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { followUser, unfollowUser } from "../controllers/users.controller";
-import { verifyFirebaseToken } from "../../../middleware/auth";
+import { followUser, unfollowUser } from "../controllers/users.controller.js";
+import { verifyFirebaseToken } from "../../../middleware/auth.js";
 const router = Router();
 
 // Add your route handlers here

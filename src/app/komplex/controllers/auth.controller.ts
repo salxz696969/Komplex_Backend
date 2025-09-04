@@ -1,9 +1,9 @@
-import { AuthenticatedRequest } from "../../../types/request";
+import { AuthenticatedRequest } from "../../../types/request.js";
 import { Response } from "express";
-import { db } from "../../../db";
-import { users } from "../../../db/schema";
+import { db } from "../../../db/index.js";
+import { users } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { userOauth } from "../../../db/models/user_oauth";
+import { userOauth } from "../../../db/models/user_oauth.js";
 
 export const handleSignup = async (
   req: AuthenticatedRequest,

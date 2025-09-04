@@ -1,12 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import routes from "./app/komplex/routes/index";
-import adminRoutes from "./app/komplex.admin/routes/index";
-import passport from "./config/passport/google";
 import session from "express-session";
 import cookieParser from "cookie-parser";
+import { redis } from "./db/redis/redisConfig.js";
 
+import routes from "./app/komplex/routes/index.js";
+import adminRoutes from "./app/komplex.admin/routes/index.js";
 dotenv.config();
 
 // Global error handlers for uncaught exceptions
@@ -32,7 +32,6 @@ app.use(
   })
 );
 
-app.use(passport.initialize());
 app.use(
   cors({
     origin: ["http://localhost:4000", "http://localhost:3000"],
@@ -71,6 +70,19 @@ app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(`📁 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔑 JWT Secret: ${process.env.JWT_SECRET ? "Set" : "NOT SET"}`);
+});
+
+try {
+  await redis.connect();
+  console.log("Redis connected");
+} catch (err) {
+  console.error("Failed to connect to Redis:", err);
+}
+
+app.listen(process.env.PORT || 6000, () => {
+  console.log(
+    `Server is running on http://localhost:${process.env.PORT || 6000}`
+  );
 });
 
 // Graceful shutdown

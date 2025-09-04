@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db } from "../../../../db";
+import { db } from "../../../../db/index.js";
 import { sql } from "drizzle-orm";
 
 export const getPrivileges = async (req: Request, res: Response) => {

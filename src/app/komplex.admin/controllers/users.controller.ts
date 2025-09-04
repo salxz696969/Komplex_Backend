@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 
-import { db } from "../../../db";
-import { users } from "../../../db/schema";
+import { db } from "../../../db/index.js";
+import { users } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -37,7 +37,6 @@ export const createAdmin = async (req: Request, res: Response) => {
         lastName,
         email,
         phone,
-        password: hashedPassword,
         isAdmin: true,
         isVerified: true,
         createdAt: new Date(),
@@ -57,7 +56,7 @@ export const updateAdmin = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await db
       .update(users)
-      .set({ firstName, lastName, email, password: hashedPassword })
+      .set({ firstName, lastName, email})
       .where(eq(users.id, Number(id)))
       .returning();
     res.json(result);

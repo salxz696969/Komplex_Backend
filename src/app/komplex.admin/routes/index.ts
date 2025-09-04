@@ -1,18 +1,18 @@
 import { Router } from "express";
-import blogsRouter from "./blogs.route";
-import exercisesRouter from "./exercises.route";
-import followersRouter from "./followers.route";
-import forumsRouter from "./forums.route";
-import usersRouter from "./users.route";
-import gradesRouter from "./grades.route";
-import subjectsRouter from "./subjects.route";
-import databaseRouter from "./database.route";
-import videosRouter from "./videos.route";
-import dashboardRouter from "./dashborad.route";
-import feedbacksRouter from "./feedbacks.route";
-import forumCommentsRouter from "./forum_comments.route";
-import forumRepliesRouter from "./forum_replies.route";
-import authRouter from "./auth.route"
+import blogsRouter from "./blogs.route.js";
+import exercisesRouter from "./exercises.route.js";
+import followersRouter from "./followers.route.js";
+import forumsRouter from "./forums.route.js";
+import usersRouter from "./users.route.js";
+import gradesRouter from "./grades.route.js";
+import subjectsRouter from "./subjects.route.js";
+import databaseRouter from "./database.route.js";
+import videosRouter from "./videos.route.js";
+import dashboardRouter from "./dashborad.route.js";
+import feedbacksRouter from "./feedbacks.route.js";
+import forumCommentsRouter from "./forum_comments.route.js";
+import forumRepliesRouter from "./forum_replies.route.js";
+import authRouter from "./auth.route.js";
 const adminRoutes = Router();
 // should have /database but let it be like this for now
 adminRoutes.use("/database", databaseRouter);

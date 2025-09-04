@@ -1,0 +1,12 @@
+.git
+.gitignore
+Dockerfile
+README.md
+test
+__tests__
+coverage
+*.log
+npm-debug.log
+yarn-error.log
+.vscode
+.idea

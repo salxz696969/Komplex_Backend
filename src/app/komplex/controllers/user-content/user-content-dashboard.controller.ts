@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { db } from "../../../../db";
+import { db } from "../../../../db/index.js";
 import { desc, eq } from "drizzle-orm";
-import { blogs, exercises, forums, videos } from "../../../../db/schema";
+import { blogs, exercises, forums, videos } from "../../../../db/schema.js";
 
 export const getUserContentDashboard = async (req: Request, res: Response) => {
   //   const { userId } = req.params;

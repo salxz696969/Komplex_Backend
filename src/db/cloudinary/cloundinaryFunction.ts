@@ -1,4 +1,4 @@
-import cloudinary from "./cloudinaryConfig";
+import cloudinary from "./cloudinaryConfig.js";
 export const uploadToCloudinary = (
 	fileBuffer: Buffer,
 	folder: string,

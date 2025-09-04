@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getSignedUrl } from "../controllers/upload.controller";
+import { getSignedUrl } from "../controllers/upload.controller.js";
 
 const router = Router();
 

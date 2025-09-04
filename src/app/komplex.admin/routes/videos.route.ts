@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { getAllVideos, getVideoById } from "../controllers/videos.controller";
+import {
+  getAllVideos,
+  getVideoById,
+} from "../controllers/videos.controller.js";
 const router = Router();
 
 // Add your route handlers here

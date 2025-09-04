@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { postBlog, getAllBlogs, getSavedBlogs } from "../controllers/blogs.controller";
+import {
+  postBlog,
+  getAllBlogs,
+  getSavedBlogs,
+} from "../controllers/blogs.controller.js";
+
 const router = Router();
 
 // Add your route handlers here

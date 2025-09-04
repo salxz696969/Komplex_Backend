@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { feedbacks } from "../../../db/models/feedbacks";
-import { db } from "../../../db";
+import { feedbacks } from "../../../db/models/feedbacks.js";
+import { db } from "../../../db/index.js";
 import { desc, eq } from "drizzle-orm";
-import { users } from "../../../db/models/users";
-import { feedbackMedia } from "../../../db/models/feedback_media";
+import { users } from "../../../db/models/users.js";
+import { feedbackMedia } from "../../../db/models/feedback_media.js";
 
 export const getFeedbacks = async (req: Request, res: Response) => {
   try {

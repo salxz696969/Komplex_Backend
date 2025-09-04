@@ -1,204 +1,238 @@
-import { eq, and, inArray, sql, like } from "drizzle-orm";
-import {
-  forumComments,
-  forumLikes,
-  forumMedias,
-  forumReplies,
-  forums,
-  users,
-} from "../../../db/schema";
-import { db } from "../../../db/index";
+import { eq, and, inArray, sql, like, desc } from "drizzle-orm";
+import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema.js";
+import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import {
-  deleteFromCloudflare,
-  uploadImageToCloudflare,
-} from "../../../db/cloudflare/cloudflareFunction";
-import { deleteReply } from "./forum_replies.controller";
-import { deleteComment } from "./forum_comments.controller";
-import { AuthenticatedRequest } from "../../../types/request";
+import { deleteFromCloudflare, uploadImageToCloudflare } from "../../../db/cloudflare/cloudflareFunction.js";
+import { deleteReply } from "./forum_replies.controller.js";
+import { deleteComment } from "./forum_comments.controller.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
-export const getAllForums = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { type, topic } = req.query;
-    const { userId } = req.user ?? { userId: 1 };
-    const conditions = [];
-    if (type) conditions.push(eq(forums.type, type as string));
-    if (topic) conditions.push(eq(forums.topic, topic as string));
+import { AuthenticatedRequest } from "../../../types/request.js";
 
-    const forumRecords = await db
-      .select({
-        id: forums.id,
-        userId: forums.userId,
-        title: forums.title,
-        description: forums.description,
-        type: forums.type,
-        topic: forums.topic,
-        viewCount: forums.viewCount,
-        createdAt: forums.createdAt,
-        updatedAt: forums.updatedAt,
-        mediaUrl: forumMedias.url,
-        mediaType: forumMedias.mediaType,
-        likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-        username: sql`${users.firstName} || ' ' || ${users.lastName}`, // Uncomment if you join users
-        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
-        // Add more fields if needed, e.g. username, isSave, etc.
-      })
-      .from(forums)
-      .leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
-      .leftJoin(users, eq(forums.userId, users.id)) // Uncomment if you want user info
-      .leftJoin(
-        forumLikes,
-        and(
-          eq(forumLikes.forumId, forums.id),
-          eq(forumLikes.userId, Number(userId))
-        )
-      )
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .groupBy(
-        forums.id,
-        forums.userId,
-        forums.title,
-        forums.description,
-        forums.type,
-        forums.topic,
-        forums.viewCount,
-        forums.createdAt,
-        forums.updatedAt,
-        forumMedias.url,
-        forumMedias.mediaType,
-        users.firstName,
-        users.lastName,
-        forumLikes.forumId
-      );
-    const forumsWithMedia = Object.values(
-      forumRecords.reduce((acc, forum) => {
-        if (!acc[forum.id]) {
-          acc[forum.id] = {
-            id: forum.id,
-            userId: forum.userId,
-            title: forum.title,
-            description: forum.description,
-            type: forum.type,
-            topic: forum.topic,
-            viewCount: forum.viewCount,
-            createdAt: forum.createdAt,
-            updatedAt: forum.updatedAt,
-            likeCount: Number(forum.likeCount) || 0,
-            media: [] as { url: string; type: string }[],
-            username: forum.username, // Uncomment if you join users
-            isLiked: !!forum.isLiked, // Uncomment if you join userSavedForums
-          };
-        }
-        if (forum.mediaUrl) {
-          acc[forum.id].media.push({
-            url: forum.mediaUrl,
-            type: forum.mediaType,
-          });
-        }
-        return acc;
-      }, {} as { [key: number]: any })
-    ) as Record<number, any>[];
+export const getAllForums = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { type, topic, page } = req.query;
+		const { userId } = req.user ?? { userId: 1 };
+		const conditions = [];
+		if (type) conditions.push(eq(forums.type, type as string));
+		if (topic) conditions.push(eq(forums.topic, topic as string));
 
-    return res.status(200).json(forumsWithMedia);
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
+		const pageNumber = Number(page) || 1;
+		const limit = 20;
+		const offset = (pageNumber - 1) * limit;
+
+		// 1️⃣ Fetch filtered forum IDs from DB
+		const forumIdRows = await db
+			.select({ id: forums.id })
+			.from(forums)
+			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.orderBy(
+				desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+				desc(forums.viewCount),
+				desc(forums.updatedAt)
+			)
+			.offset(offset)
+			.limit(limit);
+
+		if (!forumIdRows.length)
+			return res.status(200).json({ forumsWithMedia: [], hasMore: false });
+
+		// 2️⃣ Fetch forums from Redis in one call
+		const cachedResults = (await redis.mGet(
+			forumIdRows.map(f => `forums:${f.id}`)
+		)) as (string | null)[];
+
+		const hits: any[] = [];
+		const missedIds: number[] = [];
+
+		if (cachedResults.length > 0) {
+			cachedResults.forEach((item, idx) => {
+				if (item) hits.push(JSON.parse(item));
+				else missedIds.push(forumIdRows[idx].id);
+			});
+		}
+
+		// 3️⃣ Fetch missing forums from DB
+		let missedForums: any[] = [];
+		if (missedIds.length > 0) {
+			const forumRows = await db
+				.select({
+					id: forums.id,
+					userId: forums.userId,
+					title: forums.title,
+					description: forums.description,
+					type: forums.type,
+					topic: forums.topic,
+					createdAt: forums.createdAt,
+					updatedAt: forums.updatedAt,
+					mediaUrl: forumMedias.url,
+					mediaType: forumMedias.mediaType,
+					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				})
+				.from(forums)
+				.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
+				.leftJoin(users, eq(forums.userId, users.id))
+				.where(inArray(forums.id, missedIds));
+
+			const forumMap = new Map<number, any>();
+			for (const forum of forumRows) {
+				if (!forumMap.has(forum.id)) {
+					const formatted = {
+						id: forum.id,
+						userId: forum.userId,
+						title: forum.title,
+						description: forum.description,
+						type: forum.type,
+						topic: forum.topic,
+						createdAt: forum.createdAt,
+						updatedAt: forum.updatedAt,
+						username: forum.username,
+						media: [] as { url: string; type: string }[],
+					};
+					forumMap.set(forum.id, formatted);
+					missedForums.push(formatted);
+				}
+
+				if (forum.mediaUrl) {
+					forumMap.get(forum.id).media.push({
+						url: forum.mediaUrl,
+						type: forum.mediaType,
+					});
+				}
+			}
+
+			// Write missed forums to Redis
+			for (const forum of missedForums) {
+				await redis.set(`forums:${forum.id}`, JSON.stringify(forum), { EX: 600 });
+			}
+		}
+
+		// 4️⃣ Merge hits and missed forums, preserving original order
+		const allForumsMap = new Map<number, any>();
+		for (const forum of [...hits, ...missedForums]) allForumsMap.set(forum.id, forum);
+		const allForums = forumIdRows.map(f => allForumsMap.get(f.id));
+
+		// 5️⃣ Fetch dynamic fields fresh
+		const dynamicData = await db
+			.select({
+				id: forums.id,
+				viewCount: forums.viewCount,
+				likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
+				isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(forums)
+			.leftJoin(
+				forumLikes,
+				and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId)))
+			)
+			.where(inArray(forums.id, forumIdRows.map(f => f.id)))
+			.groupBy(forums.id, forumLikes.forumId);
+
+		const forumsWithMedia = allForums.map(f => {
+			const dynamic = dynamicData.find(d => d.id === f.id);
+			return {
+				...f,
+				viewCount: (dynamic?.viewCount ?? 0) + 1,
+				likeCount: Number(dynamic?.likeCount) || 0,
+				isLike: !!dynamic?.isLike,
+			};
+		});
+
+		return res.status(200).json({ forumsWithMedia, hasMore: allForums.length === limit });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
 };
 
-export const getForumById = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
+export const getForumById = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: "1" };
+		const cacheKey = `forums:${id}`;
 
-    const forumRecords = await db
-      .select({
-        id: forums.id,
-        userId: forums.userId,
-        title: forums.title,
-        description: forums.description,
-        type: forums.type,
-        topic: forums.topic,
-        viewCount: forums.viewCount,
-        createdAt: forums.createdAt,
-        updatedAt: forums.updatedAt,
-        mediaUrl: forumMedias.url,
-        mediaType: forumMedias.mediaType,
-        likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-        username: sql`${users.firstName} || ' ' || ${users.lastName}`, // Uncomment if you join users
-        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`, // Uncomment if you join userSavedForums
-      })
-      .from(forums)
-      .leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
-      .leftJoin(users, eq(forums.userId, users.id)) // Uncomment if you want user info
-      .leftJoin(
-        forumLikes,
-        and(
-          eq(forumLikes.forumId, forums.id),
-          eq(forumLikes.userId, Number(userId))
-        )
-      )
-      .where(eq(forums.id, Number(id)))
-      .groupBy(
-        forums.id,
-        forums.userId,
-        forums.title,
-        forums.description,
-        forums.type,
-        forums.topic,
-        forums.viewCount,
-        forums.createdAt,
-        forums.updatedAt,
-        forumMedias.url,
-        forumMedias.mediaType,
-        users.firstName,
-        users.lastName,
-        forumLikes.forumId
-      );
+		// Try Redis first (only static info)
+		const cached = await redis.get(cacheKey);
+		let forumData;
+		if (cached) {
+			forumData = JSON.parse(cached);
+			console.log("data from redis");
+		} else {
+			// Fetch forum static info
+			const forum = await db
+				.select({
+					id: forums.id,
+					userId: forums.userId,
+					title: forums.title,
+					description: forums.description,
+					type: forums.type,
+					topic: forums.topic,
+					viewCount: forums.viewCount,
+					createdAt: forums.createdAt,
+					updatedAt: forums.updatedAt,
+					mediaUrl: forumMedias.url,
+					mediaType: forumMedias.mediaType,
+					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				})
+				.from(forums)
+				.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
+				.leftJoin(users, eq(forums.userId, users.id))
+				.where(eq(forums.id, Number(id)));
 
-    if (!forumRecords || forumRecords.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Forum not found" });
-    }
+			if (!forum || forum.length === 0) {
+				return res.status(404).json({ success: false, message: "Forum not found" });
+			}
 
-    // Increment view count
-    await db
-      .update(forums)
-      .set({
-        viewCount: (forumRecords[0]?.viewCount ?? 0) + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(forums.id, Number(id)));
+			// Increment view count
+			await db
+				.update(forums)
+				.set({ viewCount: (forum[0]?.viewCount ?? 0) + 1, updatedAt: new Date() })
+				.where(eq(forums.id, Number(id)));
 
-    const forumWithMedia = {
-      id: forumRecords[0].id,
-      userId: forumRecords[0].userId,
-      title: forumRecords[0].title,
-      description: forumRecords[0].description,
-      type: forumRecords[0].type,
-      topic: forumRecords[0].topic,
-      viewCount: (forumRecords[0]?.viewCount ?? 0) + 1,
-      createdAt: forumRecords[0].createdAt,
-      updatedAt: new Date(),
-      media: forumRecords
-        .filter((f) => f.mediaUrl)
-        .map((f) => ({
-          url: f.mediaUrl,
-          type: f.mediaType,
-        })),
-      likeCount: Number(forumRecords[0].likeCount) || 0,
-      username: forumRecords[0].username, // Uncomment if you join users
-      isLiked: !!forumRecords[0].isLiked, // Uncomment if you join userSavedForums
-    };
+			// Build static cacheable object
+			forumData = {
+				id: forum[0].id,
+				userId: forum[0].userId,
+				title: forum[0].title,
+				description: forum[0].description,
+				type: forum[0].type,
+				topic: forum[0].topic,
+				createdAt: forum[0].createdAt,
+				updatedAt: new Date(),
+				username: forum[0].username,
+				media: forum
+					.filter((f) => f.mediaUrl)
+					.map((f) => ({
+						url: f.mediaUrl,
+						type: f.mediaType,
+					})),
+			};
+			console.log("data from db");
+
+			// Cache static data only
+			await redis.set(cacheKey, JSON.stringify({ forumWithMedia: forumData }), { EX: 600 });
+		}
+
+		// Always fetch dynamic fields fresh
+		const dynamic = await db
+			.select({
+				viewCount: forums.viewCount,
+				likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
+				isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(forums)
+			.leftJoin(forumLikes, and(eq(forumLikes.forumId, forums.id), eq(forumLikes.userId, Number(userId))))
+			.where(eq(forums.id, Number(id)))
+			.groupBy(forums.id, forumLikes.forumId);
+
+		const forumWithMedia = {
+			...forumData,
+			viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
+			likeCount: Number(dynamic[0]?.likeCount) || 0,
+			isLike: !!dynamic[0]?.isLike,
+		};
 
     return res.status(200).json(forumWithMedia);
   } catch (error) {
@@ -266,72 +300,39 @@ export const postForum = async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    return res.status(201).json({
-      success: true,
-      newForum,
-      newForumMedia,
-    });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, error: (error as Error).message });
-  }
-};
+		const [username] = await db
+			.select({ firstName: users.firstName, lastName: users.lastName })
+			.from(users)
+			.where(eq(users.id, Number(userId)));
+		const forumWithMedia = {
+			id: newForum.id,
+			userId: newForum.userId,
+			title: newForum.title,
+			description: newForum.description,
+			type: newForum.type,
+			topic: newForum.topic,
+			viewCount: newForum.viewCount,
+			createdAt: newForum.createdAt,
+			updatedAt: newForum.updatedAt,
+			username: username.firstName + " " + username.lastName,
+			isSave: false,
+			media: newForumMedia.map((m) => ({
+				url: m.url,
+				type: m.mediaType,
+			})),
+		};
+		const redisKey = `forums:${newForum.id}`;
 
-export const likeForum = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+		await redis.set(redisKey, JSON.stringify(forumWithMedia), { EX: 600 });
 
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    const like = await db
-      .insert(forumLikes)
-      .values({
-        userId: Number(userId),
-        forumId: Number(id),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    return res.status(200).json({ like });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const unlikeForum = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    const unlike = await db
-      .delete(forumLikes)
-      .where(
-        and(
-          eq(forumLikes.userId, Number(userId)),
-          eq(forumLikes.forumId, Number(id))
-        )
-      )
-      .returning();
-
-    return res.status(200).json({ unlike });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
+		return res.status(201).json({
+			success: true,
+			newForum,
+			newForumMedia,
+		});
+	} catch (error) {
+		return res.status(500).json({ success: false, error: (error as Error).message });
+	}
 };
 
 export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
@@ -426,25 +427,64 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
       deleteMedia = deleteResults.flat();
     }
 
-    const [updateForum] = await db
-      .update(forums)
-      .set({
-        title,
-        description,
-        type,
-        topic,
-        updatedAt: new Date(),
-      })
-      .where(eq(forums.id, Number(id)))
-      .returning();
-    return res.status(200).json({ updateForum, newForumMedia, deleteMedia });
-  } catch (error) {
-    console.error("Error updating forum:", error);
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
+		const [updateForum] = await db
+			.update(forums)
+			.set({
+				title,
+				description,
+				type,
+				topic,
+				updatedAt: new Date(),
+			})
+			.where(eq(forums.id, Number(id)))
+			.returning();
+
+		const forum = await db
+			.select({
+				id: forums.id,
+				userId: forums.userId,
+				title: forums.title,
+				description: forums.description,
+				type: forums.type,
+				topic: forums.topic,
+				createdAt: forums.createdAt,
+				updatedAt: forums.updatedAt,
+				mediaUrl: forumMedias.url,
+				mediaType: forumMedias.mediaType,
+				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+			})
+			.from(forums)
+			.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
+			.leftJoin(users, eq(forums.userId, users.id))
+			.where(eq(forums.id, Number(id)));
+
+		const forumWithMedia = {
+			id: forum[0].id,
+			userId: forum[0].userId,
+			title: forum[0].title,
+			description: forum[0].description,
+			type: forum[0].type,
+			topic: forum[0].topic,
+			createdAt: forum[0].createdAt,
+			updatedAt: forum[0].updatedAt,
+			username: forum[0]?.username,
+			media: forum
+				.filter((b) => b.mediaUrl)
+				.map((b) => ({
+					url: b.mediaUrl,
+					type: b.mediaType,
+				})),
+		};
+		await redis.del(`forums:${id}`);
+		await redis.set(`forums:${id}`, JSON.stringify(forumWithMedia), { EX: 600 });
+		return res.status(200).json({ updateForum, newForumMedia, deleteMedia });
+	} catch (error) {
+		console.error("Error updating forum:", error);
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
 };
 
 export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
@@ -510,18 +550,71 @@ export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
       .where(eq(forums.id, Number(id)))
       .returning();
 
-    return res.status(200).json({
-      success: true,
-      message: "Forum deleted successfully",
-      deletedForum,
-      deletedMedia,
-      deleteReplies,
-      deleteComments,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
+		await redis.del(`forums:${id}`);
+
+		return res.status(200).json({
+			success: true,
+			message: "Forum deleted successfully",
+			deletedForum,
+			deletedMedia,
+			deleteReplies,
+			deleteComments,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
+};
+
+export const likeForum = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
+
+		if (!userId) {
+			return res.status(401).json({ success: false, message: "Unauthorized" });
+		}
+
+		const like = await db
+			.insert(forumLikes)
+			.values({
+				userId: Number(userId),
+				forumId: Number(id),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.returning();
+
+		return res.status(200).json({ like });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
+};
+
+export const unlikeForum = async (req: AuthenticatedRequest, res: Response) => {
+	try {
+		const { id } = req.params;
+		const { userId } = req.user ?? { userId: 1 };
+
+		if (!userId) {
+			return res.status(401).json({ success: false, message: "Unauthorized" });
+		}
+
+		const unlike = await db
+			.delete(forumLikes)
+			.where(and(eq(forumLikes.userId, Number(userId)), eq(forumLikes.forumId, Number(id))))
+			.returning();
+
+		return res.status(200).json({ unlike });
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			error: (error as Error).message,
+		});
+	}
 };

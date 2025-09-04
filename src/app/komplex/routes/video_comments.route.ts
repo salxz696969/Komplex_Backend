@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadImages } from "../../../middleware/upload";
+import { uploadImages } from "../../../middleware/upload.js";
 import {
   getAllVideoCommentsForAVideo,
   postVideoComment,
@@ -7,7 +7,7 @@ import {
   deleteVideoComment,
   likeVideoComment,
   unlikeVideoComment,
-} from "../controllers/video_comments.controller";
+} from "../controllers/video_comments.controller.js";
 
 const router = Router();
 
@@ -18,7 +18,11 @@ router.get("/:id", getAllVideoCommentsForAVideo as any);
 router.post("/:id", uploadImages.array("images", 4), postVideoComment as any);
 
 // Update a comment (with media)
-router.patch("/:id", uploadImages.array("images", 4), updateVideoComment as any);
+router.patch(
+  "/:id",
+  uploadImages.array("images", 4),
+  updateVideoComment as any
+);
 
 // Delete a comment
 router.delete("/:id", deleteVideoComment as any);

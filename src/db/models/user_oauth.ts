@@ -7,7 +7,7 @@
 // )
 
 import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { users } from "../schema";
+import { users } from "../schema.js";
 
 export const userOauth = pgTable("user_oauth", {
   id: serial("id").primaryKey(),

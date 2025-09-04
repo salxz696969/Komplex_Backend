@@ -6,8 +6,8 @@ import {
   unlikeForumCommentReply,
   updateForumReply,
   deleteForumReply,
-} from "../controllers/forum_replies.controller";
-import { uploadImages } from "../../../middleware/upload";
+} from "../controllers/forum_replies.controller.js";
+import { uploadImages } from "../../../middleware/upload.js";
 const router = Router();
 
 // Add your route handlers here

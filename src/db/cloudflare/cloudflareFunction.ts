@@ -1,8 +1,8 @@
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import r2 from "./cloudflareConfig";
+import r2 from "./cloudflareConfig.js";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import crypto from "crypto";
-import { imageMimeTypes } from "../../utils/imageMimeTypes";
+import { imageMimeTypes } from "../../utils/imageMimeTypes.js";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Upload an image
 export const uploadImageToCloudflare = async (

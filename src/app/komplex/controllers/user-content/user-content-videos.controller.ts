@@ -1,23 +1,23 @@
 import { Request, Response } from "express";
-import { db } from "../../../../db";
+import { db } from "../../../../db/index.js";
 import {
   users,
   userSavedVideos,
   videoComments,
   videoLikes,
   videos,
-} from "../../../../db/schema";
+} from "../../../../db/schema.js";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { deleteVideoCommentInternal } from "../video_comments.controller";
+import { deleteVideoCommentInternal } from "../video_comments.controller.js";
 import {
   deleteFromCloudflare,
   uploadImageToCloudflare,
   uploadVideoToCloudflare,
-} from "../../../../db/cloudflare/cloudflareFunction";
+} from "../../../../db/cloudflare/cloudflareFunction.js";
 import fs from "fs";
-import { AuthenticatedRequest } from "../../../../types/request";
+import { AuthenticatedRequest } from "../../../../types/request.js";
 import crypto from "crypto";
-import { userVideoHistory } from "../../../../db/models/user_video_history";
+import { userVideoHistory } from "../../../../db/models/user_video_history.js";
 
 export const postVideo = async (req: AuthenticatedRequest, res: Response) => {
   let videoFile: Express.Multer.File | undefined;

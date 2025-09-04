@@ -1,6 +1,6 @@
 import { pgTable, serial, integer, timestamp } from "drizzle-orm/pg-core";
-import { mediaTypeEnum } from "./media_type";
-import { users, videoComments } from "../schema";
+import { mediaTypeEnum } from "./media_type.js";
+import { users, videoComments } from "../schema.js";
 
 export const videoCommentLike = pgTable(
   "video_comment_like",

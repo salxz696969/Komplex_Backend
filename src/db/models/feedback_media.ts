@@ -1,6 +1,6 @@
 import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { feedbacks } from "./feedbacks";
-import { mediaTypeEnum } from "../schema";
+import { feedbacks } from "./feedbacks.js";
+import { mediaTypeEnum } from "../schema.js";
 
 export const feedbackMedia = pgTable("feedback_media", {
   id: serial("id").primaryKey(),

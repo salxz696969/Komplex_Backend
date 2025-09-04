@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { uploadImages } from "../../../middleware/upload";
+import { uploadImages } from "../../../middleware/upload.js";
 import {
-  deleteForum,
-  getAllForums,
-  getForumById,
-  likeForum,
-  postForum,
-  unlikeForum,
-  updateForum,
-} from "../controllers/forums.controller";
+	deleteForum,
+	getAllForums,
+	getForumById,
+	likeForum,
+	postForum,
+	unlikeForum,
+	updateForum,
+} from "../controllers/forums.controller.js";
 const router = Router();
 
 // Add your route handlers here
