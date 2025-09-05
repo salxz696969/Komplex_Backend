@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../../../db/index.js";
 import { feedbacks } from "../../../db/models/feedbacks.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 // import { feedbackMedia } from "../../../db/models/feedback_media";
 
 export const createFeedback = async (req: Request, res: Response) => {
@@ -20,6 +21,8 @@ export const createFeedback = async (req: Request, res: Response) => {
         updatedAt: new Date(),
       })
       .returning();
+    const cacheKey = `feedback:${feedback[0].id}`;
+    await redis.set(cacheKey, JSON.stringify(feedback[0]), { EX: 600 });
     res.json(feedback);
   } catch (error) {
     res.status(500).json({ message: "Failed to create feedback" });

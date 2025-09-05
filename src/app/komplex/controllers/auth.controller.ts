@@ -4,6 +4,7 @@ import { db } from "../../../db/index.js";
 import { users } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
 import { userOauth } from "../../../db/models/user_oauth.js";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 export const handleSignup = async (req: AuthenticatedRequest, res: Response) => {
 	const { email, username, uid, firstName, lastName, dateOfBirth, phone, profileImageKey } = req.body;
@@ -89,7 +90,8 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
 		if (!user[0]) {
 			return res.status(401).json({ message: "User not found" });
 		}
-
+    const cacheKey = `users:${user[0].id}`;
+    await redis.set(cacheKey, JSON.stringify(user[0]), { EX: 60 * 60 * 24 });
 		return res.status(200).json(user[0]);
 	} catch (error) {
 		console.error(error);

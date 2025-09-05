@@ -17,6 +17,7 @@ import {
   forumLikes,
 } from "../../../db/schema.js";
 import { eq } from "drizzle-orm";
+import { redis } from "../../../db/redis/redisConfig.js";
 
 interface DashboardData {
   // Key Performance Indicators
@@ -47,6 +48,11 @@ interface DashboardData {
 export const getDashboardData = async (req: Request, res: Response) => {
   try {
     // Get total users
+    const cacheKey = `dashboard:totalUsers`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json(JSON.parse(cachedData));
+    }
     const totalUsersResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(users);
@@ -283,6 +289,7 @@ export const getDashboardData = async (req: Request, res: Response) => {
       // Recent Activities
       recentActivities: sortedActivities,
     };
+    await redis.set(cacheKey, JSON.stringify(dashboardData), { EX: 60 * 60 * 24 });
 
     return res.status(200).json(dashboardData);
   } catch (error: any) {

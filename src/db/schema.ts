@@ -2,15 +2,24 @@ export * from "./models/media_type.js";
 export * from "./models/users.js";
 export * from "./models/followers.js";
 export * from "./models/blogs.js";
+export * from "./models/blog_media.js";
 export * from "./models/forums.js";
 export * from "./models/forum_likes.js";
 export * from "./models/forum_medias.js";
 export * from "./models/forum_comments.js";
+export * from "./models/forum_comment_like.js";
+export * from "./models/forum_comment_media.js";
 export * from "./models/forum_replies.js";
+export * from "./models/forum_reply_like.js";
+export * from "./models/forum_reply_media.js";
 export * from "./models/videos.js";
 export * from "./models/video_likes.js";
 export * from "./models/video_comments.js";
+export * from "./models/video_comment_like.js";
+export * from "./models/video_comment_medias.js";
 export * from "./models/video_replies.js";
+export * from "./models/video_reply_like.js";
+export * from "./models/video_reply_medias.js";
 export * from "./models/exercises.js";
 export * from "./models/questions.js";
 export * from "./models/choices.js";
@@ -19,5 +28,9 @@ export * from "./models/user_saved_videos.js";
 export * from "./models/user_exercise_history.js";
 export * from "./models/user_video_history.js";
 export * from "./models/user_ai_history.js";
-export * from "./models/user_exercise_history.js"
-export * from "./models/user_question_history.js"
+export * from "./models/user_oauth.js";
+export * from "./models/user_question_history.js";
+export * from "./models/feedbacks.js";
+export * from "./models/feedback_media.js";
+export * from "./models/feedback_status.js";
+
