@@ -1,45 +1,18 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import session from "express-session";
-import cookieParser from "cookie-parser";
+import morgan from "morgan";
+import swaggerUi from "swagger-ui-express";
+import { specs } from "./config/swagger.js";
 import { redis } from "./db/redis/redisConfig.js";
 
 import routes from "./app/komplex/routes/index.js";
 import adminRoutes from "./app/komplex.admin/routes/index.js";
 dotenv.config();
 
-// Global error handlers for uncaught exceptions
-process.on("uncaughtException", (error) => {
-  console.error("🚨 UNCAUGHT EXCEPTION:", error);
-  console.error("Stack trace:", error.stack);
-  process.exit(1);
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("🚨 UNHANDLED REJECTION at:", promise);
-  console.error("Reason:", reason);
-  process.exit(1);
-});
-
 const app = express();
 
-app.use(
-  session({
-    secret: process.env.JWT_SECRET!,
-    resave: false,
-    saveUninitialized: true,
-  })
-);
-
-app.use(
-  cors({
-    origin: ["http://localhost:4000", "http://localhost:3000"],
-    credentials: true,
-  })
-);
-app.use(express.json());
-app.use(cookieParser());
+// middleware
 
 // Enhanced error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
@@ -61,16 +34,34 @@ app.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
+app.use(
+  cors({
+    origin: ["http://localhost:4000", "http://localhost:3000"],
+    credentials: true,
+  })
+);
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+app.use(express.json());
+
+// Swagger documentation
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {
+    explorer: true,
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "KOMPLEX API Documentation",
+  })
+);
+
+// app routes
+
 app.use("/", routes);
 app.use("/admin", adminRoutes);
 
-const PORT = process.env.PORT || 6000;
+// connection
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`📁 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🔑 JWT Secret: ${process.env.JWT_SECRET ? "Set" : "NOT SET"}`);
-});
+const PORT = process.env.PORT || 6000;
 
 try {
   await redis.connect();
@@ -79,10 +70,23 @@ try {
   console.error("Failed to connect to Redis:", err);
 }
 
-app.listen(process.env.PORT || 6000, () => {
-  console.log(
-    `Server is running on http://localhost:${process.env.PORT || 6000}`
-  );
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`📁 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔑 JWT Secret: ${process.env.JWT_SECRET ? "Set" : "NOT SET"}`);
+});
+
+// Global error handlers for uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("🚨 UNCAUGHT EXCEPTION:", error);
+  console.error("Stack trace:", error.stack);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("🚨 UNHANDLED REJECTION at:", promise);
+  console.error("Reason:", reason);
+  process.exit(1);
 });
 
 // Graceful shutdown

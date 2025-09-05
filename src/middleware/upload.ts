@@ -1,49 +1,47 @@
-// src/middleware/upload.ts
 import multer from "multer";
-import path from "path";
+import { Request, Response, NextFunction } from "express";
 
-// -----------------------
-// Memory storage for photos
-// -----------------------
-const photoStorage = multer.memoryStorage();
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
 
-// Only photos
-const photoFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-	if (file.mimetype.startsWith("image/")) {
-		cb(null, true);
-	} else {
-		cb(new Error("Only image files are allowed"));
-	}
-};
-
-export const uploadImages = multer({ storage: photoStorage, fileFilter: photoFilter });
-
-// -----------------------
-// Disk storage for videos
-// -----------------------
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
-		if (file.fieldname === "video") {
-			cb(null, "src/app/middleware/uploads/videos/");
-		} else if (file.fieldname === "image") {
-			cb(null, "src/app/middleware/uploads/images");
-		} else {
-			cb(new Error("Invalid field name"), "");
-		}
-	},
-	filename: (req, file, cb) => {
-		const ext = path.extname(file.originalname);
-		const filename = `${Date.now()}-${file.fieldname}${ext}`;
-		cb(null, filename);
-	},
+// Create multer instance
+export const uploadImages = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 4, // Maximum 4 files
+  },
+  fileFilter: (req, file, cb) => {
+    // Check if file is an image
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed!"));
+    }
+  },
 });
 
-export const uploadVideoAndThumbnail = multer({
-	storage,
-	limits: {
-		fileSize: 1024 * 1024 * 200, // 500MB
-	},
-}).fields([
-	{ name: "video", maxCount: 1 },
-	{ name: "image", maxCount: 1 },
-]);
+// Error handling middleware for multer
+export const handleUploadError = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(400)
+        .json({ message: "File too large. Maximum size is 10MB." });
+    }
+    if (err.code === "LIMIT_FILE_COUNT") {
+      return res
+        .status(400)
+        .json({ message: "Too many files. Maximum is 4 files." });
+    }
+  }
+  if (err.message === "Only image files are allowed!") {
+    return res.status(400).json({ message: "Only image files are allowed!" });
+  }
+  next(err);
+};

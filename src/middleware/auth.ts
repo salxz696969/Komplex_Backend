@@ -8,6 +8,7 @@ export const verifyFirebaseToken = async (
   next: NextFunction
 ) => {
   // verify and attach user to request
+  // return res.status(200).json(req.headers.authorization);
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) {
     return res.status(401).json({ message: "Missing token" });
