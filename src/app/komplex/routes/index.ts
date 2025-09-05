@@ -10,7 +10,7 @@ import videoLikesRouter from "./video_likes.route.js";
 import videoRepliesRouter from "./video_replies.route.js";
 import videosRouter from "./videos.route.js";
 import userContentRouter from "./user-content.route.js";
-import aiHistoryRouter from "./aiHistory.route.js";
+import aiHistoryRouter from "./ai.route.js";
 import feedbackRouter from "./feedback.route.js";
 import uploadRouter from "./upload.route.js";
 import authRouter from "./auth.routes.js";
@@ -31,7 +31,7 @@ router.use("/user-content", userContentRouter);
 router.use("/feedback", feedbackRouter);
 router.use("/upload", uploadRouter);
 router.use("/auth", authRouter);
-router.use("/ai-history", aiHistoryRouter);
+router.use("/ai", aiHistoryRouter);
 
 
 export default router;
