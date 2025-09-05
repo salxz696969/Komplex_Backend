@@ -1,13 +1,8 @@
-import { Request, Response } from "express";
 import { db } from "@/db/index.js";
 import { desc, eq } from "drizzle-orm";
 import { blogs, exercises, forums, videos } from "@/db/schema.js";
 
-export const getUserContentDashboard = async (req: Request, res: Response) => {
-  //   const { userId } = req.params;
-
-  let userId = 1; // assume for now // TODO
-
+export const getUserContentDashboard = async (userId: number) => {
   // number of blogs, number of vids, number of excercises compoleted, number of forums posted
   const dashboardData = {
     numOfBlogs: 0,
@@ -95,9 +90,5 @@ export const getUserContentDashboard = async (req: Request, res: Response) => {
     )
     .slice(0, 5);
 
-  console.log(sortedRecentActivities);
-
-  return res
-    .json({ dashboardData, recentActivities: sortedRecentActivities })
-    .status(200);
+  return { data: { dashboardData, recentActivities: sortedRecentActivities } };
 };

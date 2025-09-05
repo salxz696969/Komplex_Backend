@@ -2,6 +2,10 @@ import { and, eq, desc, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, users, userSavedBlogs } from "@/db/schema.js";
+import {
+  deleteFromCloudflare,
+  uploadImageToCloudflare,
+} from "@/db/cloudflare/cloudflareFunction.js";
 
 export const getAllBlogs = async (query: any, userId: number) => {
   const { type, topic, page } = query;
@@ -103,8 +107,7 @@ export const getAllBlogs = async (query: any, userId: number) => {
 
   // 4️⃣ Merge hits and missed blogs, preserving original order
   const allBlogsMap = new Map<number, any>();
-  for (const blog of [...hits, ...missedBlogs])
-    allBlogsMap.set(blog.id, blog);
+  for (const blog of [...hits, ...missedBlogs]) allBlogsMap.set(blog.id, blog);
   const allBlogs = blogIdRows.map((b) => allBlogsMap.get(b.id));
 
   // 5️⃣ Fetch dynamic fields fresh
@@ -237,3 +240,83 @@ export const getBlogById = async (id: string, userId: number) => {
 
   return { data: { blog: blogWithMedia } };
 };
+
+// export const postBlog = async (body: any, files: any, userId: number) => {
+//   const { title, description, type, topic } = body;
+
+//   if (!userId || !title || !description) {
+//     throw new Error("Missing required fields");
+//   }
+
+//   // Insert blog
+//   const [newBlog] = await db
+//     .insert(blogs)
+//     .values({
+//       userId: Number(userId),
+//       title,
+//       description,
+//       type,
+//       topic,
+//       viewCount: 0,
+//       likeCount: 0,
+//       createdAt: new Date(),
+//       updatedAt: new Date(),
+//     })
+//     .returning();
+
+//   // Insert blog media if uploaded
+//   let newBlogMedia: any[] = [];
+//   if (files) {
+//     for (const file of files as Express.Multer.File[]) {
+//       try {
+//         const uniqueKey = `${newBlog.id}-${crypto.randomUUID()}-${
+//           file.originalname
+//         }`;
+//         const url = await uploadImageToCloudflare(
+//           uniqueKey,
+//           file.buffer,
+//           file.mimetype
+//         );
+//         const [newMedia] = await db
+//           .insert(blogMedia)
+//           .values({
+//             blogId: newBlog.id,
+//             url: url,
+//             urlForDeletion: uniqueKey,
+//             mediaType: "image",
+//             createdAt: new Date(),
+//             updatedAt: new Date(),
+//           })
+//           .returning();
+//         newBlogMedia.push(newMedia);
+//       } catch (error) {
+//         console.error("Error uploading file or saving media:", error);
+//       }
+//     }
+//   }
+
+//   const [username] = await db
+//     .select({ firstName: users.firstName, lastName: users.lastName })
+//     .from(users)
+//     .where(eq(users.id, Number(userId)));
+//   const blogWithMedia = {
+//     id: newBlog.id,
+//     userId: newBlog.userId,
+//     title: newBlog.title,
+//     description: newBlog.description,
+//     type: newBlog.type,
+//     topic: newBlog.topic,
+//     createdAt: newBlog.createdAt,
+//     updatedAt: newBlog.updatedAt,
+//     username: username.firstName + " " + username.lastName,
+//     media: newBlogMedia.map((m) => ({
+//       url: m.url,
+//       type: m.mediaType,
+//     })),
+//   };
+//   const redisKey = `blogs:${newBlog.id}`;
+
+//   await redis.set(redisKey, JSON.stringify(blogWithMedia), { EX: 600 });
+
+//   return { data: { success: true, newBlog, newBlogMedia } };
+// };

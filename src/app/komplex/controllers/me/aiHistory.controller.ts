@@ -1,27 +1,15 @@
-import { and, eq, sql, desc } from "drizzle-orm";
-import { db } from "../../../../db/index.js";
-import { redis } from "../../../../db/redis/redisConfig.js";
-import { userAIHistory } from "../../../../db/schema.js";
-import { AuthenticatedRequest } from "../../../../types/request.js";
-import { response, Response } from "express";
-export const getAiHistoryForAUser = async (
+import { Response } from "express";
+import { AuthenticatedRequest } from "@/types/request.js";
+import * as aiHistoryService from "@/app/komplex/services/me/ai-history/service.js";
+
+export const getAiHistoryForAUserController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const { userId } = req.user ?? { userId: "1" };
-    const cacheKey = `aiHistory:userId:${userId}`;
-    const redisData = await redis.get(cacheKey);
-    if (redisData) {
-      return res.status(200).json({ success: true, data: redisData });
-    }
-    const aiHistory = await db
-      .select()
-      .from(userAIHistory)
-      .where(eq(userAIHistory.userId, Number(userId)))
-      .orderBy(desc(userAIHistory.createdAt));
-    await redis.set(cacheKey, JSON.stringify(aiHistory), { EX: 60 * 60 * 24 });
-    return res.status(200).json({ success: true, data: aiHistory });
+    const result = await aiHistoryService.getAiHistoryForAUser(Number(userId));
+    return res.status(200).json(result.data);
   } catch (error) {
     return res
       .status(500)
@@ -29,44 +17,23 @@ export const getAiHistoryForAUser = async (
   }
 };
 
-export const postAiHistoryForAUser = async (
+export const postAiHistoryForAUserController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const { userId } = req.user ?? { userId: "1" };
-    const { prompt, result } = req.body;
-
-    if (!prompt || !result) {
+    const result = await aiHistoryService.postAiHistoryForAUser(
+      req.body,
+      Number(userId)
+    );
+    return res.status(201).json(result.data);
+  } catch (error) {
+    if ((error as Error).message === "Missing prompt or result") {
       return res
         .status(400)
         .json({ success: false, error: "Missing prompt or result" });
     }
-
-    const [newAiHistory] = await db
-      .insert(userAIHistory)
-      .values({
-        userId: Number(userId),
-        prompt,
-        aiResult: result,
-      })
-      .returning();
-    const cacheKey = `aiHistory:userId:${userId}`;
-    const redisData = await redis.get(cacheKey);
-    if (redisData) {
-      await redis.set(
-        cacheKey,
-        JSON.stringify([...JSON.parse(redisData), newAiHistory]),
-        { EX: 60 * 60 * 24 }
-      );
-    } else {
-      await redis.set(cacheKey, JSON.stringify([newAiHistory]), {
-        EX: 60 * 60 * 24,
-      });
-    }
-
-    return res.status(201).json({ success: true, data: newAiHistory });
-  } catch (error) {
     return res
       .status(500)
       .json({ success: false, error: (error as Error).message });

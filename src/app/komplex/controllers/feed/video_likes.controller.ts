@@ -1,11 +1,10 @@
 import { Response } from "express";
-
-import { AuthenticatedRequest } from "../../../../types/request.js";
-import { db } from "../../../../db/index.js";
-import { users, videoLikes } from "../../../../db/schema.js";
+import { AuthenticatedRequest } from "@/types/request.js";
+import { db } from "@/db/index.js";
+import { users, videoLikes } from "@/db/schema.js";
 import { eq } from "drizzle-orm";
 
-export const getVideoLikes = async (
+export const getVideoLikesController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
