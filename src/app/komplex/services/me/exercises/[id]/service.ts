@@ -4,7 +4,9 @@ import {
   userExerciseHistory,
   exerciseQuestionHistory,
   questions,
+  users,
 } from "@/db/schema.js";
+import { redis } from "@/db/redis/redisConfig.js";
 
 export const getExerciseById = async (id: string, userId: number) => {
   const maxScore = await db
@@ -147,33 +149,59 @@ function transformSectionScores(questionHistory: any[]) {
   return sectionScoresByAttempt;
 }
 
-export const submitExercise = async (id: string, body: any, userId: number) => {
-  const { answers, score, timeTaken } = body;
+export const submitExercise = async (id: string, answers: any[], score: number, timeTaken: number, userId: number) => {
+  try {
 
-  const exerciseHistory = await db
-    .insert(userExerciseHistory)
-    .values({
-      userId,
-      exerciseId: parseInt(id),
-      score: score,
-      timeTaken: timeTaken,
+    const exerciseHistory = await db
+      .insert(userExerciseHistory)
+      .values({
+        userId: Number(userId),
+        exerciseId: parseInt(id),
+        score: score,
+        timeTaken: timeTaken,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning({
+        id: userExerciseHistory.id,
+      });
+
+    let cacheQuestions = [];
+    for (const answer of answers) {
+      const questionId = answer.questionId;
+      const isCorrect = answer.isCorrect;
+
+      const insertedQuestion = await db
+        .insert(exerciseQuestionHistory)
+        .values({
+          exerciseHistoryId: exerciseHistory[0].id,
+          questionId,
+          isCorrect,
+        })
+        .returning();
+
+      cacheQuestions.push(insertedQuestion[0]);
+    }
+
+    const [username] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    const cacheData = {
+      username,
+      score,
+      timeTaken,
+      questions: cacheQuestions,
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
-    .returning({
-      id: userExerciseHistory.id,
-    });
+    };
 
-  for (const answer of answers) {
-    const questionId = answer.questionId;
-    const isCorrect = answer.isCorrect;
+    const cacheKey = `exercise:userId:${userId}:exerciseId:${id}`;
+    await redis.set(cacheKey, JSON.stringify(cacheData), { EX: 600 });
 
-    await db.insert(exerciseQuestionHistory).values({
-      exerciseHistoryId: exerciseHistory[0].id,
-      questionId,
-      isCorrect,
-    });
+    return { data: cacheData };
+  } catch (error: any) {
+    throw new Error((error as Error).message);
   }
-
-  return { data: { message: "Exercise submitted successfully" } };
 };

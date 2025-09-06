@@ -1,149 +1,185 @@
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { blogs, blogMedia, users, userSavedBlogs } from "@/db/schema.js";
-import {
-  deleteFromCloudflare,
-  uploadImageToCloudflare,
-} from "@/db/cloudflare/cloudflareFunction.js";
+import { blogs, blogMedia, followers, users, userSavedBlogs } from "@/db/schema.js";
 
-export const getAllBlogs = async (query: any, userId: number) => {
-  const { type, topic, page } = query;
-  const conditions = [];
-  if (type) conditions.push(eq(blogs.type, type as string));
-  if (topic) conditions.push(eq(blogs.topic, topic as string));
+export const getAllBlogs = async (
+  type?: string,
+  topic?: string,
+  page?: string,
+  userId?: number
+) => {
+  try {
+    const conditions = [];
+    if (type) conditions.push(eq(blogs.type, type));
+    if (topic) conditions.push(eq(blogs.topic, topic));
 
-  const pageNumber = Number(page) || 1;
-  const limit = 20;
-  const offset = (pageNumber - 1) * limit;
+    const pageNumber = Number(page) || 1;
+    const limit = 20;
+    const offset = (pageNumber - 1) * limit;
 
-  // 1️⃣ Fetch filtered blog IDs from DB
-  const blogIdRows = await db
-    .select({ id: blogs.id })
-    .from(blogs)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(
-      desc(
-        sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
-      ),
-      desc(blogs.likeCount),
-      desc(blogs.updatedAt)
-    )
-    .offset(offset)
-    .limit(limit);
-
-  if (!blogIdRows.length)
-    return { data: { blogsWithMedia: [], hasMore: false } };
-
-  // 2️⃣ Fetch blogs from Redis in one call
-  const cachedResults = (await redis.mGet(
-    blogIdRows.map((b) => `blogs:${b.id}`)
-  )) as (string | null)[];
-
-  const hits: any[] = [];
-  const missedIds: number[] = [];
-
-  if (cachedResults.length > 0) {
-    cachedResults.forEach((item, idx) => {
-      if (item) hits.push(JSON.parse(item));
-      else missedIds.push(blogIdRows[idx].id);
-    });
-  }
-
-  // 3️⃣ Fetch missing blogs from DB
-  let missedBlogs: any[] = [];
-  if (missedIds.length > 0) {
-    const blogRows = await db
-      .select({
-        id: blogs.id,
-        userId: blogs.userId,
-        title: blogs.title,
-        description: blogs.description,
-        type: blogs.type,
-        topic: blogs.topic,
-        createdAt: blogs.createdAt,
-        updatedAt: blogs.updatedAt,
-        mediaUrl: blogMedia.url,
-        mediaType: blogMedia.mediaType,
-        username: sql`${users.firstName} || ' ' || ${users.lastName}`,
-      })
+    const followedUsersBlogsId = await db
+      .select({ id: blogs.id })
       .from(blogs)
-      .leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
-      .leftJoin(users, eq(blogs.userId, users.id))
-      .where(inArray(blogs.id, missedIds));
-
-    const blogMap = new Map<number, any>();
-    for (const blog of blogRows) {
-      if (!blogMap.has(blog.id)) {
-        const formatted = {
-          id: blog.id,
-          userId: blog.userId,
-          title: blog.title,
-          description: blog.description,
-          type: blog.type,
-          topic: blog.topic,
-          createdAt: blog.createdAt,
-          updatedAt: blog.updatedAt,
-          username: blog.username,
-          media: [] as { url: string; type: string }[],
-        };
-        blogMap.set(blog.id, formatted);
-        missedBlogs.push(formatted);
-      }
-
-      if (blog.mediaUrl) {
-        blogMap.get(blog.id).media.push({
-          url: blog.mediaUrl,
-          type: blog.mediaType,
-        });
-      }
-    }
-
-    // Write missed blogs to Redis
-    for (const blog of missedBlogs) {
-      await redis.set(`blogs:${blog.id}`, JSON.stringify(blog), { EX: 600 });
-    }
-  }
-
-  // 4️⃣ Merge hits and missed blogs, preserving original order
-  const allBlogsMap = new Map<number, any>();
-  for (const blog of [...hits, ...missedBlogs]) allBlogsMap.set(blog.id, blog);
-  const allBlogs = blogIdRows.map((b) => allBlogsMap.get(b.id));
-
-  // 5️⃣ Fetch dynamic fields fresh
-  const dynamicData = await db
-    .select({
-      id: blogs.id,
-      viewCount: blogs.viewCount,
-      likeCount: blogs.likeCount,
-      isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
-    })
-    .from(blogs)
-    .leftJoin(
-      userSavedBlogs,
-      and(
-        eq(userSavedBlogs.blogId, blogs.id),
-        eq(userSavedBlogs.userId, Number(userId))
+      .where(
+        inArray(
+          blogs.userId,
+          db
+            .select({ followedId: followers.followedId })
+            .from(followers)
+            .where(eq(followers.userId, Number(userId)))
+        )
       )
-    )
-    .where(
-      inArray(
-        blogs.id,
-        blogIdRows.map((b) => b.id)
+      .orderBy(
+        desc(
+          sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
+        ),
+        desc(blogs.likeCount),
+        desc(blogs.updatedAt)
       )
+      .limit(5);
+
+    // 1️⃣ Fetch filtered blog IDs from DB
+    const blogIds = await db
+      .select({ id: blogs.id })
+      .from(blogs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(
+        desc(
+          sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
+        ),
+        desc(blogs.likeCount),
+        desc(blogs.updatedAt)
+      )
+      .offset(offset)
+      .limit(limit);
+
+    const blogIdRows = Array.from(
+      Array.from(
+        new Set([
+          ...followedUsersBlogsId.map((f) => f.id),
+          ...blogIds.map((f) => f.id),
+        ])
+      ).map((id) => ({ id }))
     );
 
-  const blogsWithMedia = allBlogs.map((b) => {
-    const dynamic = dynamicData.find((d) => d.id === b.id);
-    return {
-      ...b,
-      viewCount: dynamic?.viewCount ?? 0,
-      likeCount: dynamic?.likeCount ?? 0,
-      isSave: !!dynamic?.isSave,
-    };
-  });
+    if (!blogIdRows.length) {
+      return { data: { blogsWithMedia: [], hasMore: false } };
+    }
 
-  return { data: { blogsWithMedia, hasMore: allBlogs.length === limit } };
+    // 2️⃣ Fetch blogs from Redis in one call
+    const cachedResults = (await redis.mGet(
+      blogIdRows.map((b) => `blogs:${b.id}`)
+    )) as (string | null)[];
+
+    const hits: any[] = [];
+    const missedIds: number[] = [];
+
+    if (cachedResults.length > 0) {
+      cachedResults.forEach((item, idx) => {
+        if (item) hits.push(JSON.parse(item));
+        else missedIds.push(blogIdRows[idx].id);
+      });
+    }
+
+    // 3️⃣ Fetch missing blogs from DB
+    let missedBlogs: any[] = [];
+    if (missedIds.length > 0) {
+      const blogRows = await db
+        .select({
+          id: blogs.id,
+          userId: blogs.userId,
+          title: blogs.title,
+          description: blogs.description,
+          type: blogs.type,
+          topic: blogs.topic,
+          createdAt: blogs.createdAt,
+          updatedAt: blogs.updatedAt,
+          mediaUrl: blogMedia.url,
+          mediaType: blogMedia.mediaType,
+          username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        })
+        .from(blogs)
+        .leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
+        .leftJoin(users, eq(blogs.userId, users.id))
+        .where(inArray(blogs.id, missedIds));
+
+      const blogMap = new Map<number, any>();
+      for (const blog of blogRows) {
+        if (!blogMap.has(blog.id)) {
+          const formatted = {
+            id: blog.id,
+            userId: blog.userId,
+            title: blog.title,
+            description: blog.description,
+            type: blog.type,
+            topic: blog.topic,
+            createdAt: blog.createdAt,
+            updatedAt: blog.updatedAt,
+            username: blog.username,
+            media: [] as { url: string; type: string }[],
+          };
+          blogMap.set(blog.id, formatted);
+          missedBlogs.push(formatted);
+        }
+
+        if (blog.mediaUrl) {
+          blogMap.get(blog.id).media.push({
+            url: blog.mediaUrl,
+            type: blog.mediaType,
+          });
+        }
+      }
+
+      // Write missed blogs to Redis
+      for (const blog of missedBlogs) {
+        await redis.set(`blogs:${blog.id}`, JSON.stringify(blog), { EX: 600 });
+      }
+    }
+
+    // 4️⃣ Merge hits and missed blogs, preserving original order
+    const allBlogsMap = new Map<number, any>();
+    for (const blog of [...hits, ...missedBlogs])
+      allBlogsMap.set(blog.id, blog);
+    const allBlogs = blogIdRows.map((b) => allBlogsMap.get(b.id));
+
+    // 5️⃣ Fetch dynamic fields fresh
+    const dynamicData = await db
+      .select({
+        id: blogs.id,
+        viewCount: blogs.viewCount,
+        likeCount: blogs.likeCount,
+        isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
+      })
+      .from(blogs)
+      .leftJoin(
+        userSavedBlogs,
+        and(
+          eq(userSavedBlogs.blogId, blogs.id),
+          eq(userSavedBlogs.userId, Number(userId))
+        )
+      )
+      .where(
+        inArray(
+          blogs.id,
+          blogIdRows.map((b) => b.id)
+        )
+      );
+
+    const blogsWithMedia = allBlogs.map((b) => {
+      const dynamic = dynamicData.find((d) => d.id === b.id);
+      return {
+        ...b,
+        viewCount: dynamic?.viewCount ?? 0,
+        likeCount: dynamic?.likeCount ?? 0,
+        isSave: !!dynamic?.isSave,
+      };
+    });
+
+    return { data: { blogsWithMedia, hasMore: allBlogs.length === limit } };
+  } catch (error) {
+    throw new Error((error as Error).message);
+  }
 };
 
 export const getBlogById = async (id: string, userId: number) => {
@@ -240,83 +276,3 @@ export const getBlogById = async (id: string, userId: number) => {
 
   return { data: { blog: blogWithMedia } };
 };
-
-// export const postBlog = async (body: any, files: any, userId: number) => {
-//   const { title, description, type, topic } = body;
-
-//   if (!userId || !title || !description) {
-//     throw new Error("Missing required fields");
-//   }
-
-//   // Insert blog
-//   const [newBlog] = await db
-//     .insert(blogs)
-//     .values({
-//       userId: Number(userId),
-//       title,
-//       description,
-//       type,
-//       topic,
-//       viewCount: 0,
-//       likeCount: 0,
-//       createdAt: new Date(),
-//       updatedAt: new Date(),
-//     })
-//     .returning();
-
-//   // Insert blog media if uploaded
-//   let newBlogMedia: any[] = [];
-//   if (files) {
-//     for (const file of files as Express.Multer.File[]) {
-//       try {
-//         const uniqueKey = `${newBlog.id}-${crypto.randomUUID()}-${
-//           file.originalname
-//         }`;
-//         const url = await uploadImageToCloudflare(
-//           uniqueKey,
-//           file.buffer,
-//           file.mimetype
-//         );
-//         const [newMedia] = await db
-//           .insert(blogMedia)
-//           .values({
-//             blogId: newBlog.id,
-//             url: url,
-//             urlForDeletion: uniqueKey,
-//             mediaType: "image",
-//             createdAt: new Date(),
-//             updatedAt: new Date(),
-//           })
-//           .returning();
-//         newBlogMedia.push(newMedia);
-//       } catch (error) {
-//         console.error("Error uploading file or saving media:", error);
-//       }
-//     }
-//   }
-
-//   const [username] = await db
-//     .select({ firstName: users.firstName, lastName: users.lastName })
-//     .from(users)
-//     .where(eq(users.id, Number(userId)));
-//   const blogWithMedia = {
-//     id: newBlog.id,
-//     userId: newBlog.userId,
-//     title: newBlog.title,
-//     description: newBlog.description,
-//     type: newBlog.type,
-//     topic: newBlog.topic,
-//     createdAt: newBlog.createdAt,
-//     updatedAt: newBlog.updatedAt,
-//     username: username.firstName + " " + username.lastName,
-//     media: newBlogMedia.map((m) => ({
-//       url: m.url,
-//       type: m.mediaType,
-//     })),
-//   };
-//   const redisKey = `blogs:${newBlog.id}`;
-
-//   await redis.set(redisKey, JSON.stringify(blogWithMedia), { EX: 600 });
-
-//   return { data: { success: true, newBlog, newBlogMedia } };
-// };
