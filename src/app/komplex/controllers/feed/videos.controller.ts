@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthenticatedRequest } from "@/types/request.js";
 import * as videoService from "@/app/komplex/services/feed/videos/service.js";
 import * as videoByIdService from "@/app/komplex/services/feed/videos/[id]/service.js";
@@ -32,97 +32,6 @@ export const getVideoByIdController = async (
       return res
         .status(400)
         .json({ success: false, message: "Missing video id" });
-    }
-    if ((error as Error).message === "Video not found") {
-      return res
-        .status(404)
-        .json({ success: false, message: "Video not found" });
-    }
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const likeVideoController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
-    const result = await videoByIdService.likeVideo(Number(id), Number(userId));
-    return res.status(200).json(result.data);
-  } catch (error) {
-    if ((error as Error).message === "Unauthorized") {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const unlikeVideoController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
-    const result = await videoByIdService.unlikeVideo(
-      Number(id),
-      Number(userId)
-    );
-    return res.status(200).json(result.data);
-  } catch (error) {
-    if ((error as Error).message === "Unauthorized") {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const saveVideoController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
-    const result = await videoByIdService.saveVideo(Number(id), Number(userId));
-    return res.status(200).json(result.data);
-  } catch (error) {
-    if ((error as Error).message === "Unauthorized") {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-    return res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-};
-
-export const unsaveVideoController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
-    const result = await videoByIdService.unsaveVideo(
-      Number(id),
-      Number(userId)
-    );
-    return res.status(200).json(result.data);
-  } catch (error) {
-    if ((error as Error).message === "Unauthorized") {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     if ((error as Error).message === "Video not found") {
       return res

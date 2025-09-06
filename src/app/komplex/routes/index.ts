@@ -17,7 +17,6 @@ router.use("/users", usersRouter); // Other users' content
 // Core functionality
 router.use("/auth", authRouter);
 router.use("/upload", uploadRouter);
-router.use("/feedback", feedbackRouter);
-router.use("/ai-history", aiHistoryRouter);
+
 
 export default router;

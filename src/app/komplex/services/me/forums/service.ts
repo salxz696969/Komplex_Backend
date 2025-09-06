@@ -4,7 +4,7 @@ import { redis } from "@/db/redis/redisConfig.js";
 import { forums, forumMedias, users, forumLikes } from "@/db/schema.js";
 import { uploadImageToCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
 
-export const getAllForums = async (query: any, userId: number) => {
+export const getAllMyForums = async (query: any, userId: number) => {
   const { type, topic } = query;
   const conditions = [];
   if (type) conditions.push(eq(forums.type, type as string));

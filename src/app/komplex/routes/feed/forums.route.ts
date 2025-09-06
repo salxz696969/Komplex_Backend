@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
-  getAllForums,
-  getForumById,
+  getAllForumsController,
+  getForumByIdController,   
   // TODO: Future features - these functions need to be implemented
   // getForumComments,
   // getForumReplies,
@@ -50,7 +50,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/", getAllForums);
+router.get("/", getAllForumsController);
 
 /**
  * @swagger
@@ -85,7 +85,7 @@ router.get("/", getAllForums);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", getForumById);
+router.get("/:id", getForumByIdController);
 
 /**
  * @swagger

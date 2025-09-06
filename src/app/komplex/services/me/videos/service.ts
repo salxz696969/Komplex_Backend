@@ -6,9 +6,12 @@ import {
   videoLikes,
   videos,
   userVideoHistory,
+  questions as questionsTable,
+  exercises,
+  choices,
 } from "@/db/schema.js";
 
-export const getAllVideos = async (query: any, userId: number) => {
+export const getAllMyVideos = async (query: any, userId: number) => {
   const { topic, type } = query;
   const conditions = [];
   if (topic) conditions.push(eq(videos.topic, topic as string));
@@ -64,7 +67,7 @@ export const getAllVideos = async (query: any, userId: number) => {
   return { data: videoRows };
 };
 
-export const getUserVideoHistory = async (userId: number) => {
+export const getMyVideoHistory = async (userId: number) => {
   const videoHistory = await db
     .select()
     .from(userVideoHistory)
@@ -82,4 +85,87 @@ export const getUserVideoHistory = async (userId: number) => {
       thumbnailUrl: history.videos?.thumbnailUrl,
     })),
   };
+};
+
+export const postVideo = async (body: any, userId: number) => {
+  const { videoKey, title, description, topic, type, thumbnailKey, questions } =
+    body;
+
+  // Validate that the user exists
+  const userExists = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, Number(userId)))
+    .limit(1);
+
+  if (userExists.length === 0) {
+    throw new Error(`User with ID ${userId} does not exist`);
+  }
+
+  const videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
+  const thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
+
+  const newVideo = await db
+    .insert(videos)
+    .values({
+      videoUrlForDeletion: videoKey,
+      videoUrl,
+      thumbnailUrlForDeletion: thumbnailKey,
+      thumbnailUrl,
+      title,
+      description,
+      topic,
+      type,
+      viewCount: 0,
+      duration: 0,
+      userId: Number(userId),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  // Create exercise for video quiz
+  console.log(questions);
+
+  const newExercise = await db
+    .insert(exercises)
+    .values({
+      videoId: newVideo[0].id,
+      title: `Quiz for ${title}`,
+      description: `Multiple choice questions for the video: ${title}`,
+      subject: topic || "General",
+      grade: "All",
+      duration: 0,
+      userId: Number(userId),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  for (const question of questions) {
+    const newQuestion = await db
+      .insert(questionsTable)
+      .values({
+        exerciseId: newExercise[0].id,
+        title: question.title,
+        questionType: "",
+        section: "",
+        imageUrl: "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    for (const choice of question.choices) {
+      await db.insert(choices).values({
+        questionId: newQuestion[0].id,
+        text: choice.text,
+        isCorrect: choice.isCorrect,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  return { data: { success: true, video: newVideo } };
 };

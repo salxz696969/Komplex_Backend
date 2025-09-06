@@ -12,80 +12,8 @@ import {
   deleteFromCloudflare,
 } from "@/db/cloudflare/cloudflareFunction.js";
 import { deleteReply } from "../../forum-replies/[id]/service.js";
-import { deleteComment } from "../../forum-comments/service.js";
+import { deleteComment } from "../../forum-comments/[id]/service.js";
 import { redis } from "@/db/redis/redisConfig.js";
-
-export const getForumById = async (id: string, userId: number) => {
-  const forumRecords = await db
-    .select({
-      id: forums.id,
-      userId: forums.userId,
-      title: forums.title,
-      description: forums.description,
-      type: forums.type,
-      topic: forums.topic,
-      viewCount: forums.viewCount,
-      createdAt: forums.createdAt,
-      updatedAt: forums.updatedAt,
-      mediaUrl: forumMedias.url,
-      mediaType: forumMedias.mediaType,
-      likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-      username: sql`${users.firstName} || ' ' || ${users.lastName}`,
-    })
-    .from(forums)
-    .leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
-    .leftJoin(users, eq(forums.userId, users.id))
-    .leftJoin(
-      forumLikes,
-      and(
-        eq(forumLikes.forumId, forums.id),
-        eq(forumLikes.userId, Number(userId))
-      )
-    )
-    .where(eq(forums.id, Number(id)))
-    .groupBy(
-      forums.id,
-      forums.userId,
-      forums.title,
-      forums.description,
-      forums.type,
-      forums.topic,
-      forums.viewCount,
-      forums.createdAt,
-      forums.updatedAt,
-      forumMedias.url,
-      forumMedias.mediaType,
-      users.firstName,
-      users.lastName,
-      forumLikes.forumId
-    );
-
-  if (!forumRecords || forumRecords.length === 0) {
-    throw new Error("Forum not found");
-  }
-
-  const forumWithMedia = {
-    id: forumRecords[0].id,
-    userId: forumRecords[0].userId,
-    title: forumRecords[0].title,
-    description: forumRecords[0].description,
-    type: forumRecords[0].type,
-    topic: forumRecords[0].topic,
-    viewCount: (forumRecords[0]?.viewCount ?? 0) + 1,
-    createdAt: forumRecords[0].createdAt,
-    updatedAt: new Date(),
-    media: forumRecords
-      .filter((f) => f.mediaUrl)
-      .map((f) => ({
-        url: f.mediaUrl,
-        type: f.mediaType,
-      })),
-    likeCount: Number(forumRecords[0].likeCount) || 0,
-    username: forumRecords[0].username,
-  };
-
-  return { data: forumWithMedia };
-};
 
 export const updateForum = async (
   id: string,

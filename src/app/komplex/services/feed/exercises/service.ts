@@ -68,7 +68,7 @@ export const getExercises = async (grade: string, userId: number) => {
 };
 
 export const getExercise = async (id: string) => {
-  // Get the exercise
+  // Get the exercise (just questions and choices not report like at /me)
   const exerciseResult = await db
     .select()
     .from(exercises)
@@ -131,33 +131,4 @@ export const getExercise = async (id: string) => {
   return { data: exerciseWithQuestions };
 };
 
-export const submitExercise = async (id: string, body: any, userId: number) => {
-  const { answers, score, timeTaken } = body;
 
-  const exerciseHistory = await db
-    .insert(userExerciseHistory)
-    .values({
-      userId,
-      exerciseId: parseInt(id),
-      score: score,
-      timeTaken: timeTaken,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning({
-      id: userExerciseHistory.id,
-    });
-
-  for (const answer of answers) {
-    const questionId = answer.questionId;
-    const isCorrect = answer.isCorrect;
-
-    await db.insert(exerciseQuestionHistory).values({
-      exerciseHistoryId: exerciseHistory[0].id,
-      questionId,
-      isCorrect,
-    });
-  }
-
-  return { data: { message: "Exercise submitted successfully" } };
-};

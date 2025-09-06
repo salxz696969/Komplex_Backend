@@ -3,43 +3,15 @@ import { AuthenticatedRequest } from "@/types/request.js";
 import * as videoService from "@/app/komplex/services/me/videos/service.js";
 import * as videoByIdService from "@/app/komplex/services/me/videos/[id]/service.js";
 
-export const getAllVideosController = async (
+export const getAllMyVideosController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const { userId } = req.user ?? { userId: 1 };
-    const result = await videoService.getAllVideos(req.query, Number(userId));
+    const result = await videoService.getAllMyVideos(req.query, Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, error: (error as Error).message });
-  }
-};
-
-export const getVideoByIdController = async (
-  req: AuthenticatedRequest,
-  res: Response
-) => {
-  try {
-    const { userId } = req.user ?? { userId: 1 };
-    const videoId = Number(req.params.id);
-
-    if (!videoId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing video id" });
-    }
-
-    const result = await videoByIdService.getVideoById(videoId, Number(userId));
-    return res.status(200).json(result.data);
-  } catch (error) {
-    if ((error as Error).message === "Video not found") {
-      return res
-        .status(404)
-        .json({ success: false, message: "Video not found" });
-    }
     return res
       .status(500)
       .json({ success: false, error: (error as Error).message });
@@ -202,15 +174,40 @@ export const deleteVideoController = async (
   }
 };
 
-export const getUserVideoHistoryController = async (
+export const getMyVideoHistoryController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
     const { userId } = req.user ?? { userId: "1" };
-    const result = await videoService.getUserVideoHistory(Number(userId));
+    const result = await videoService.getMyVideoHistory(Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const postVideoController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.user ?? { userId: 1 };
+    const result = await videoService.postVideo(
+      req.body,
+      Number(userId)
+    );
+    return res.status(201).json(result.data);
+  } catch (error) {
+    if ((error as Error).message.includes("User with ID")) {
+      return res.status(400).json({
+        success: false,
+        error: (error as Error).message,
+      });
+    }
     return res.status(500).json({
       success: false,
       error: (error as Error).message,

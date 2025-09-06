@@ -4,7 +4,7 @@ import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, users } from "@/db/schema.js";
 import { uploadImageToCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
 
-export const getAllUserBlogs = async (userId: number) => {
+export const getAllMyBlogs = async (userId: number) => {
   const blogsFromDb = await db
     .select({
       id: blogs.id,
