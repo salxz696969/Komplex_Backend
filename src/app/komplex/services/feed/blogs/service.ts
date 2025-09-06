@@ -176,7 +176,7 @@ export const getAllBlogs = async (
       };
     });
 
-    return { data: { blogsWithMedia, hasMore: allBlogs.length === limit } };
+    return { data: { data: blogsWithMedia, hasMore: allBlogs.length === limit } };
   } catch (error) {
     throw new Error((error as Error).message);
   }
@@ -274,5 +274,5 @@ export const getBlogById = async (id: string, userId: number) => {
     isSave: !!dynamic[0]?.isSave,
   };
 
-  return { data: { blog: blogWithMedia } };
+  return { data: { data: blogWithMedia } };
 };
