@@ -78,7 +78,7 @@ export const getAllVideos = async (
     ).map((id) => ({ id }));
 
     if (!videoIdRows.length) {
-      return { data: { videosWithMedia: [], hasMore: false } };
+      return { data: [], hasMore: false };
     }
 
     // 2️⃣ Fetch videos from Redis in one call
@@ -192,7 +192,7 @@ export const getAllVideos = async (
       };
     });
 
-    return { data: { videosWithMedia, hasMore: allVideos.length === limit } };
+    return { data: videosWithMedia, hasMore: allVideos.length === limit };
   } catch (error) {
     throw new Error((error as Error).message);
   }

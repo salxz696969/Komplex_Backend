@@ -16,7 +16,7 @@ export const getAllVideosController = async (
       page as string,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res
       .status(500)
@@ -32,7 +32,7 @@ export const getVideoByIdController = async (
     const { userId } = req.user ?? { userId: 1 };
     const videoId = Number(req.params.id);
     const result = await videoByIdService.getVideoById(videoId, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Missing video id") {
       return res

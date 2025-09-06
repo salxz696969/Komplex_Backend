@@ -16,7 +16,7 @@ export const getAllForumsController = async (
       page as string,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -33,7 +33,7 @@ export const getForumByIdController = async (
     const { id } = req.params;
     const { userId } = req.user ?? { userId: "1" };
     const result = await forumByIdService.getForumById(id, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Forum not found") {
       return res

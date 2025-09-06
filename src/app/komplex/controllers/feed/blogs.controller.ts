@@ -15,7 +15,7 @@ export const getAllBlogsController = async (
       page as string,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -29,7 +29,7 @@ export const getBlogByIdController = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).user?.userId ?? "1";
     const result = await blogService.getBlogById(id, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Blog not found") {
       return res

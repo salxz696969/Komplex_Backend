@@ -72,7 +72,7 @@ export const getAllForums = async (
     ).map((id) => ({ id }));
 
     if (!forumIdRows.length) {
-      return { data: { forumsWithMedia: [], hasMore: false } };
+      return { data: [], hasMore: false };
     }
 
     // 2️⃣ Fetch forums from Redis in one call
@@ -187,7 +187,7 @@ export const getAllForums = async (
       };
     });
 
-    return { data: { forumsWithMedia, hasMore: allForums.length === limit } };
+    return { data: forumsWithMedia, hasMore: allForums.length === limit  };
   } catch (error) {
     throw new Error((error as Error).message);
   }

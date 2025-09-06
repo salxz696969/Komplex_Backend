@@ -123,5 +123,5 @@ export const postBlog = async (body: any, files: any, userId: number) => {
 
   await redis.set(redisKey, JSON.stringify(blogWithMedia), { EX: 600 });
 
-  return { data: { success: true, newBlog, newBlogMedia } };
+  return { success: true, data: newBlog, newBlogMedia };
 };

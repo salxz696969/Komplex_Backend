@@ -1,7 +1,13 @@
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { blogs, blogMedia, followers, users, userSavedBlogs } from "@/db/schema.js";
+import {
+  blogs,
+  blogMedia,
+  followers,
+  users,
+  userSavedBlogs,
+} from "@/db/schema.js";
 
 export const getAllBlogs = async (
   type?: string,
@@ -64,7 +70,7 @@ export const getAllBlogs = async (
     );
 
     if (!blogIdRows.length) {
-      return { data: { blogsWithMedia: [], hasMore: false } };
+      return { data: [], hasMore: false };
     }
 
     // 2️⃣ Fetch blogs from Redis in one call
@@ -176,7 +182,7 @@ export const getAllBlogs = async (
       };
     });
 
-    return { data: { data: blogsWithMedia, hasMore: allBlogs.length === limit } };
+    return { data: blogsWithMedia, hasMore: allBlogs.length === limit };
   } catch (error) {
     throw new Error((error as Error).message);
   }
@@ -274,5 +280,5 @@ export const getBlogById = async (id: string, userId: number) => {
     isSave: !!dynamic[0]?.isSave,
   };
 
-  return { data: { data: blogWithMedia } };
+  return { data: blogWithMedia };
 };
