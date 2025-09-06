@@ -82,10 +82,13 @@ export const submitExerciseController = async (
   try {
     const { id } = req.params;
     const { userId } = req.user ?? { userId: 1 };
+    const { answers, score, timeTaken } = req.body;
     const result = await exerciseByIdService.submitExercise(
       id,
-      req.body,
-      Number(userId)
+      answers,
+      score,
+      timeTaken,
+      Number(userId),
     );
     return res.status(200).json(result.data);
   } catch (error) {

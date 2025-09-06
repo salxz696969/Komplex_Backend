@@ -10,7 +10,7 @@ import videoRepliesRouter from "./video-replies.route.js";
 import exercisesRouter from "./exercises.route.js";
 import followRouter from "./follow.route.js";
 import feedbackRouter from "./feedback.route.js";
-import aiHistoryRouter from "./aiHistory.route.js";
+import aiRouter from "./ai.route.js";
 import { getUserContentDashboardController } from "../../controllers/me/dashboard.controller.js";
 
 const router = Router();
@@ -35,6 +35,6 @@ router.use("/follow", followRouter); // empty for now
 
 router.use("/feedback", feedbackRouter);
 
-router.use("/ai-history", aiHistoryRouter);
+router.use("/ai", aiRouter);
 
 export default router;

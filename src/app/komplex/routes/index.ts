@@ -4,8 +4,6 @@ import meRouter from "./me/index.js";
 import usersRouter from "./users/index.js";
 import authRouter from "./auth.routes.js";
 import uploadRouter from "./upload.route.js";
-import feedbackRouter from "./me/feedback.route.js";
-import aiHistoryRouter from "./aiHistory.route.js";
 
 const router = Router();
 
