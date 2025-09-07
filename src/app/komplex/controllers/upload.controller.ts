@@ -8,7 +8,8 @@ export const getSignedUrl = async (
 ) => {
   try {
     const { fileName, fileType } = req.body;
-    const { userId } = req.user ?? { userId: "1" };
+    // user already checked at middleware
+    const userId = req.user.userId;
 
     if (!fileName || !fileType) {
       return res

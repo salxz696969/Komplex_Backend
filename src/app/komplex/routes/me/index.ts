@@ -12,11 +12,14 @@ import followRouter from "./follow.route.js";
 import feedbackRouter from "./feedback.route.js";
 import aiRouter from "./ai.route.js";
 import { getUserContentDashboardController } from "../../controllers/me/dashboard.controller.js";
+import { getCurrentUser } from "../../controllers/me/.controller.js";
+import { verifyFirebaseToken } from "../../../../middleware/auth.js";
 
 const router = Router();
 
 // My content and interactions
-router.get("/dashboard", getUserContentDashboardController); // GET /me/dashboard - my dashboard
+router.get("/", verifyFirebaseToken as any, getCurrentUser as any);
+router.get("/dashboard", getUserContentDashboardController as any); // GET /me/dashboard - my dashboard
 
 router.use("/blogs", blogsRouter);
 

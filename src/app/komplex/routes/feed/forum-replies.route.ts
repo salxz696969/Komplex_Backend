@@ -3,6 +3,6 @@ import { getForumCommentsRepliesController } from "../../controllers/feed/forum-
 
 const router = Router();
 
-router.get("/:id", getForumCommentsRepliesController);
+router.get("/:id", getForumCommentsRepliesController as any);
 
 export default router;

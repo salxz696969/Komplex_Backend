@@ -1,7 +1,6 @@
 import { verifyFirebaseToken } from "../../../middleware/auth.js";
 import express from "express";
 import {
-  getCurrentUser,
   handleSignup,
   handleSocialLogIn,
 } from "../controllers/auth.controller.js";
@@ -9,9 +8,6 @@ import {
 const router = express.Router();
 
 router.post("/signup", handleSignup as any);
-
 router.post("/social-login", handleSocialLogIn as any);
-
-router.get("/me", verifyFirebaseToken, getCurrentUser);
 
 export default router;

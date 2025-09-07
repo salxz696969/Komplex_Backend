@@ -3,6 +3,6 @@ import { getAllVideoRepliesForACommentController } from "../../controllers/feed/
 
 const router = Router();
 
-router.get("/:id", getAllVideoRepliesForACommentController);
+router.get("/:id", getAllVideoRepliesForACommentController as any);
 
 export default router;

@@ -10,8 +10,8 @@ import {
 
 const router = Router();
 
-router.get("/", getAllVideosController); // GET /feed/videos - curated video feed
+router.get("/", getAllVideosController as any); // GET /feed/videos - curated video feed
 
-router.get("/:id", getVideoByIdController); // GET /feed/videos/:id - specific video details
+router.get("/:id", getVideoByIdController as any); // GET /feed/videos/:id - specific video details
 
 export default router;

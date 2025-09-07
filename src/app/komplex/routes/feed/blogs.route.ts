@@ -9,8 +9,8 @@ import {
 
 const router = Router();
 
-router.get("/", getAllBlogsController);
-router.get("/:id", getBlogByIdController);
+router.get("/", getAllBlogsController as any);
+router.get("/:id", getBlogByIdController as any);
 
 // TODO: Future interaction endpoints
 // router.get("/:id/likes", getBlogLikes); // Who liked this blog

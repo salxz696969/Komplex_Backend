@@ -8,9 +8,9 @@ import {
 
 const router = Router();
 
-router.get("/dashboard", getExerciseDashboardController);
-router.get("/history", getExerciseHistoryController);
-router.get("/:id/report", getExerciseByIdController);
-router.post("/:id/submit", submitExerciseController);
+router.get("/dashboard", getExerciseDashboardController as any);
+router.get("/history", getExerciseHistoryController as any);
+router.get("/:id/report", getExerciseByIdController as any);
+router.post("/:id/submit", submitExerciseController as any);
 
 export default router;

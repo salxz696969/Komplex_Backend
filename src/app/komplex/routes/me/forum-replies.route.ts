@@ -10,10 +10,10 @@ import {
 const router = Router();
 
 // Forum Replies routes
-router.post("/:id", postForumReplyController);
-router.put("/:id", updateForumReplyController);
-router.delete("/:id", deleteForumReplyController);
-router.patch("/:id/like", likeForumReplyController);
-router.patch("/:id/unlike", unlikeForumReplyController);
+router.post("/:id", postForumReplyController as any);
+router.put("/:id", updateForumReplyController as any);
+router.delete("/:id", deleteForumReplyController as any);
+router.patch("/:id/like", likeForumReplyController as any);
+router.patch("/:id/unlike", unlikeForumReplyController as any);
 
 export default router;

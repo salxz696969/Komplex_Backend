@@ -3,6 +3,6 @@ import { getMyVideoHistoryController } from "../../controllers/me/videos.control
 
 const router = Router();
 
-router.get("/", getMyVideoHistoryController); // GET /me/videos/history - my video history
+router.get("/", getMyVideoHistoryController as any); // GET /me/videos/history - my video history
 
 export default router;

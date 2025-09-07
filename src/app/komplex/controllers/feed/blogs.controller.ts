@@ -7,7 +7,7 @@ export const getAllBlogsController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { type, topic, page } = req.query;
     const result = await blogService.getAllBlogs(
       type as string,
@@ -24,10 +24,10 @@ export const getAllBlogsController = async (
   }
 };
 
-export const getBlogByIdController = async (req: Request, res: Response) => {
+export const getBlogByIdController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.userId ?? "1";
+    const userId = req.user.userId;
     const result = await blogService.getBlogById(id, Number(userId));
     return res.status(200).json(result);
   } catch (error) {

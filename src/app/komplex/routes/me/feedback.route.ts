@@ -3,6 +3,6 @@ import { createFeedbackController } from "../../controllers/me/feedback.controll
 
 const router = Router();
 
-router.post("/", createFeedbackController);
+router.post("/", createFeedbackController as any);
 
 export default router;

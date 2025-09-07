@@ -9,10 +9,10 @@ import {
 
 const router = Router();
 
-router.post("/", postVideoReplyController);
-router.put("/:id", updateVideoReplyController);
-router.delete("/:id", deleteVideoReplyController);
-router.patch("/:id/like", likeVideoReplyController);
-router.patch("/:id/unlike", unlikeVideoReplyController);
+router.post("/", postVideoReplyController as any);
+router.put("/:id", updateVideoReplyController as any);
+router.delete("/:id", deleteVideoReplyController as any);
+router.patch("/:id/like", likeVideoReplyController as any);
+router.patch("/:id/unlike", unlikeVideoReplyController as any);
 
 export default router;

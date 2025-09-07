@@ -56,7 +56,7 @@ export const deleteFromCloudflare = async (
 export const getSignedUrlFromCloudflare = async (
   fileName: string,
   fileType: string,
-  userId: string
+  userId: number
 ): Promise<{ signedUrl: string; key: string }> => {
   const bucket = imageMimeTypes.includes(fileType)
     ? "komplex-image"

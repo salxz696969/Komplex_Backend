@@ -3,6 +3,6 @@ import { getVideoLikesController } from "../../controllers/feed/video-likes.cont
 
 const router = Router();
 
-router.get("/:id", getVideoLikesController);
+router.get("/:id", getVideoLikesController as any);
 
-export default router;  
+export default router;

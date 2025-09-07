@@ -9,8 +9,8 @@ import {
 
 const router = Router();
 
-router.get("/", getExercisesController);
-router.get("/:id", getExerciseController);
+router.get("/", getExercisesController as any);
+router.get("/:id", getExerciseController as any);
 
 // TODO: Future features
 // router.get("/:id/stats", getExerciseStats); // Exercise statistics
