@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import * as dashboardService from "@/app/komplex/services/me/dashboard/service.js";
+import { AuthenticatedRequest } from "@/types/request.js";
 
 export const getUserContentDashboardController = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    let userId = 1; // assume for now // TODO
+    const userId = req.user.userId;
     const result = await dashboardService.getUserContentDashboard(userId);
     return res.status(200).json(result.data);
   } catch (error) {

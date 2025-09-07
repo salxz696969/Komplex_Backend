@@ -88,8 +88,16 @@ export const getMyVideoHistory = async (userId: number) => {
 };
 
 export const postVideo = async (body: any, userId: number) => {
-  const { videoKey, title, description, topic, type, thumbnailKey, questions } =
-    body;
+  const {
+    videoKey,
+    title,
+    description,
+    topic,
+    type,
+    thumbnailKey,
+    duration,
+    questions,
+  } = body;
 
   // Validate that the user exists
   const userExists = await db
@@ -117,7 +125,7 @@ export const postVideo = async (body: any, userId: number) => {
       topic,
       type,
       viewCount: 0,
-      duration: 0,
+      duration: duration || 0,
       userId: Number(userId),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -127,45 +135,47 @@ export const postVideo = async (body: any, userId: number) => {
   // Create exercise for video quiz
   console.log(questions);
 
-  const newExercise = await db
-    .insert(exercises)
-    .values({
-      videoId: newVideo[0].id,
-      title: `Quiz for ${title}`,
-      description: `Multiple choice questions for the video: ${title}`,
-      subject: topic || "General",
-      grade: "All",
-      duration: 0,
-      userId: Number(userId),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  for (const question of questions) {
-    const newQuestion = await db
-      .insert(questionsTable)
+  if (questions && questions.length > 0) {
+    const newExercise = await db
+      .insert(exercises)
       .values({
-        exerciseId: newExercise[0].id,
-        title: question.title,
-        questionType: "",
-        section: "",
-        imageUrl: "",
+        videoId: newVideo[0].id,
+        title: `Quiz for ${title}`,
+        description: `Multiple choice questions for the video: ${title}`,
+        subject: topic || "General",
+        grade: "All",
+        duration: 0,
+        userId: Number(userId),
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    for (const choice of question.choices) {
-      await db.insert(choices).values({
-        questionId: newQuestion[0].id,
-        text: choice.text,
-        isCorrect: choice.isCorrect,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    for (const question of questions) {
+      const newQuestion = await db
+        .insert(questionsTable)
+        .values({
+          exerciseId: newExercise[0].id,
+          title: question.title,
+          questionType: "",
+          section: "",
+          imageUrl: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      for (const choice of question.choices) {
+        await db.insert(choices).values({
+          questionId: newQuestion[0].id,
+          text: choice.text,
+          isCorrect: choice.isCorrect,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
     }
   }
 
-  return { data: { success: true, video: newVideo } };
+  return { data: newVideo };
 };

@@ -99,7 +99,7 @@ export const handleSocialLogIn = async (
       })
       .returning();
 
-    const useroauth = await db.insert(userOauth).values({
+    await db.insert(userOauth).values({
       uid,
       provider,
       createdAt: new Date(),

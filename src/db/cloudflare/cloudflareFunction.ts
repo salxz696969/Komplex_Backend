@@ -62,7 +62,9 @@ export const getSignedUrlFromCloudflare = async (
     ? "komplex-image"
     : "komplex-video";
 
-  const key = `${userId}/${fileName}-${crypto.randomUUID()}`;
+  const key = `${userId}/${encodeURIComponent(
+    fileName
+  )}-${crypto.randomUUID()}`;
 
   const command = await new PutObjectCommand({
     Bucket: bucket,
@@ -70,7 +72,7 @@ export const getSignedUrlFromCloudflare = async (
     ContentType: fileType,
   });
 
-  const signedUrl = await getSignedUrl(r2, command, { expiresIn: 60 }); // 1 min expiry
+  const signedUrl = await getSignedUrl(r2, command, { expiresIn: 300 }); // 5 min expiry
 
   return {
     signedUrl,

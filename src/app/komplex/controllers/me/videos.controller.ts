@@ -8,9 +8,9 @@ export const getAllMyVideosController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await videoService.getAllMyVideos(req.query, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res
       .status(500)
@@ -24,9 +24,9 @@ export const likeVideoController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await videoByIdService.likeVideo(Number(id), Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -44,12 +44,12 @@ export const unlikeVideoController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await videoByIdService.unlikeVideo(
       Number(id),
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -67,9 +67,9 @@ export const saveVideoController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const result = await videoByIdService.saveVideo(Number(id), Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -87,12 +87,12 @@ export const unsaveVideoController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const result = await videoByIdService.unsaveVideo(
       Number(id),
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -114,28 +114,29 @@ export const updateVideoController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const { id } = req.params;
 
-    if (
-      !id ||
-      !req.body.title ||
-      !req.body.description ||
-      !req.body.type ||
-      !req.body.topic
-    ) {
+    if (!id || !req.body.title || !req.body.description) {
       return res
         .status(400)
         .json({ success: false, message: "Missing required fields" });
     }
 
+    const { title, description, videoKey, thumbnailKey, questions } = req.body;
+
     const result = await videoByIdService.updateVideo(
       Number(id),
-      req.body,
-      req.files,
-      Number(userId)
+      Number(userId),
+      {
+        title,
+        description,
+        videoKey,
+        thumbnailKey,
+        questions,
+      }
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Video not found") {
       return res
@@ -154,7 +155,7 @@ export const deleteVideoController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await videoByIdService.deleteVideo(
       Number(id),
@@ -179,9 +180,9 @@ export const getMyVideoHistoryController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const result = await videoService.getMyVideoHistory(Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -195,12 +196,9 @@ export const postVideoController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
-    const result = await videoService.postVideo(
-      req.body,
-      Number(userId)
-    );
-    return res.status(201).json(result.data);
+    const userId = req.user.userId;
+    const result = await videoService.postVideo(req.body, Number(userId));
+    return res.status(201).json(result);
   } catch (error) {
     if ((error as Error).message.includes("User with ID")) {
       return res.status(400).json({

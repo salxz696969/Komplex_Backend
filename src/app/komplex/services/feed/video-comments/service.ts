@@ -24,7 +24,7 @@ export const getAllVideoCommentsForAVideo = async (
 
   let cachedComments: any[] = [];
   if (cached) {
-    cachedComments = JSON.parse(cached).commentsWithMedia;
+    cachedComments = JSON.parse(cached);
   }
 
   // --- Fetch dynamic fields fresh ---
@@ -120,7 +120,7 @@ export const getAllVideoCommentsForAVideo = async (
 
     await redis.set(
       cacheKey,
-      JSON.stringify({ commentsWithMedia: cachedComments }),
+      JSON.stringify( cachedComments ),
       { EX: 60 }
     );
   }
@@ -136,9 +136,7 @@ export const getAllVideoCommentsForAVideo = async (
   });
 
   return {
-    data: {
-      commentsWithMedia,
-      hasMore: commentsWithMedia.length === limit,
-    },
+    data: commentsWithMedia,
+    hasMore: commentsWithMedia.length === limit,
   };
 };

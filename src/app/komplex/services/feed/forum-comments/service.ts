@@ -22,7 +22,7 @@ export const getAllCommentsForAForum = async (
 
   let cachedComments: any[] = [];
   if (cached) {
-    cachedComments = JSON.parse(cached).commentsWithMedia;
+    cachedComments = JSON.parse(cached);
     console.log("data from redis");
   }
 
@@ -119,11 +119,7 @@ export const getAllCommentsForAForum = async (
 
     console.log("data from db");
     // Cache only static part
-    await redis.set(
-      cacheKey,
-      JSON.stringify({ commentsWithMedia: cachedComments }),
-      { EX: 60 }
-    );
+    await redis.set(cacheKey, JSON.stringify(cachedComments), { EX: 60 });
   }
 
   // Merge dynamic data with cached static data
@@ -137,9 +133,7 @@ export const getAllCommentsForAForum = async (
   });
 
   return {
-    data: {
-      commentsWithMedia,
-      hasMore: commentsWithMedia.length === limit,
-    },
+    data: commentsWithMedia,
+    hasMore: commentsWithMedia.length === limit,
   };
 };

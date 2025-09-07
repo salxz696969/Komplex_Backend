@@ -1,3 +1,4 @@
+import { verifyFirebaseToken } from "@/middleware/auth.js";
 import { Router } from "express";
 import {
   getAllBlogsController,
@@ -9,8 +10,8 @@ import {
 
 const router = Router();
 
-router.get("/", getAllBlogsController as any);
-router.get("/:id", getBlogByIdController as any);
+router.get("/", verifyFirebaseToken as any, getAllBlogsController as any);
+router.get("/:id", verifyFirebaseToken as any, getBlogByIdController as any);
 
 // TODO: Future interaction endpoints
 // router.get("/:id/likes", getBlogLikes); // Who liked this blog

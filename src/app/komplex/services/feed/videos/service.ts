@@ -184,7 +184,7 @@ export const getAllVideos = async (
       const dynamic = dynamicData.find((d) => d.id === v.id);
       return {
         ...v,
-        viewCount: (dynamic?.viewCount ?? 0) + 1,
+        viewCount: Number(dynamic?.viewCount ?? 0) + 1,
         likeCount: Number(dynamic?.likeCount) || 0,
         saveCount: Number(dynamic?.saveCount) || 0,
         isLike: !!dynamic?.isLike,

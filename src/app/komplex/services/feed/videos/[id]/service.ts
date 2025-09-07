@@ -6,6 +6,9 @@ import {
   userSavedVideos,
   videoLikes,
   userVideoHistory,
+  exercises,
+  questions,
+  choices,
 } from "@/db/schema.js";
 
 export const getVideoById = async (videoId: number, userId: number) => {
@@ -64,6 +67,44 @@ export const getVideoById = async (videoId: number, userId: number) => {
     throw new Error("Video not found");
   }
 
+  // get video exercises
+  const videoExercisesRows = await db
+    .select()
+    .from(exercises)
+    .where(eq(exercises.videoId, videoId))
+    .leftJoin(questions, eq(exercises.id, questions.exerciseId))
+    .leftJoin(choices, eq(questions.id, choices.questionId))
+    .groupBy(exercises.id, questions.id, choices.id);
+
+  const videoExerciseMap = new Map();
+
+  for (const row of videoExercisesRows) {
+    const exercise = row.exercises;
+    if (!videoExerciseMap.has(exercise.id)) {
+      videoExerciseMap.set(exercise.id, {
+        ...exercise,
+        questions: [],
+      });
+    }
+    const exerciseObj = videoExerciseMap.get(exercise.id);
+
+    if (row.questions?.id) {
+      let question = exerciseObj.questions.find(
+        (q: any) => q.id === row.questions?.id
+      );
+      if (!question) {
+        question = { ...row.questions, choices: [] };
+        exerciseObj.questions.push(question);
+      }
+
+      if (row.choices?.id) {
+        question.choices.push(row.choices);
+      }
+    }
+  }
+
+  const videoExercises = Array.from(videoExerciseMap.values());
+
   // increment view count
   await db
     .update(videos)
@@ -80,5 +121,7 @@ export const getVideoById = async (videoId: number, userId: number) => {
     updatedAt: new Date(),
   });
 
-  return { data: videoRow };
+  const videoWithExercises = { ...videoRow, exercises: videoExercises };
+
+  return { data: videoWithExercises };
 };

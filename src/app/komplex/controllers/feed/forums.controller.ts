@@ -8,7 +8,7 @@ export const getAllForumsController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { type, topic, page } = req.query;
     const result = await forumService.getAllForums(
       type as string,
@@ -31,7 +31,7 @@ export const getForumByIdController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const result = await forumByIdService.getForumById(id, Number(userId));
     return res.status(200).json(result);
   } catch (error) {

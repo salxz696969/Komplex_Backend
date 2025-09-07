@@ -5,13 +5,17 @@ import {
   userSavedVideos,
   videos,
   videoComments,
+  exercises,
+  questions,
+  choices,
+  userVideoHistory,
 } from "@/db/schema.js";
 import {
   uploadVideoToCloudflare,
   uploadImageToCloudflare,
   deleteFromCloudflare,
 } from "@/db/cloudflare/cloudflareFunction.js";
-import { deleteVideoCommentInternal } from "@/app/komplex/services/me/video-comments/[id]/service.js"; 
+import { deleteVideoCommentInternal } from "@/app/komplex/services/me/video-comments/[id]/service.js";
 import fs from "fs";
 
 export const likeVideo = async (videoId: number, userId: number) => {
@@ -99,116 +103,153 @@ export const unsaveVideo = async (videoId: number, userId: number) => {
   };
 };
 
+type UpdateVideoPayload = {
+  title: string;
+  description: string;
+  videoKey?: string;
+  thumbnailKey?: string;
+  questions?: Array<{
+    id?: number | string;
+    title: string;
+    choices: Array<{ id?: number | string; text: string; isCorrect: boolean }>;
+  }>;
+};
+
 export const updateVideo = async (
   id: number,
-  body: any,
-  files: any,
-  userId: number
+  userId: number,
+  payload: UpdateVideoPayload
 ) => {
-  const { title, description, type, topic } = body;
+  const {
+    title,
+    description,
+    videoKey,
+    thumbnailKey,
+    questions: questionsPayload,
+  } = payload;
 
-  if (!id || !title || !description || !type || !topic) {
-    throw new Error("Missing required fields");
-  }
-
-  const [doesUserOwnThisVideo] = await db
+  const [video] = await db
     .select()
     .from(videos)
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
     .limit(1);
 
-  if (!doesUserOwnThisVideo) {
+  if (!video) {
     throw new Error("Video not found");
-  }
-
-  let videoFile: Express.Multer.File | undefined;
-  let thumbnailFile: Express.Multer.File | undefined;
-
-  if (
-    files &&
-    typeof files === "object" &&
-    "video" in files &&
-    "image" in files
-  ) {
-    videoFile = (files as { [fieldname: string]: Express.Multer.File[] })
-      .video[0];
-    thumbnailFile = (files as { [fieldname: string]: Express.Multer.File[] })
-      .image[0];
-  }
-
-  const uniqueKey =
-    videoFile && thumbnailFile
-      ? `${videoFile.filename}-${crypto.randomUUID()}-${thumbnailFile.filename}`
-      : crypto.randomUUID();
-
-  let newVideoUrl: string | null = null;
-  if (videoFile) {
-    const [videoUrlForDeletionForThisVideo] = await db
-      .select({ videoUrlForDeletion: videos.videoUrlForDeletion })
-      .from(videos)
-      .where(eq(videos.id, Number(id)))
-      .limit(1);
-
-    await deleteFromCloudflare(
-      "komplex-video",
-      videoUrlForDeletionForThisVideo.videoUrlForDeletion ?? ""
-    );
-    newVideoUrl = await uploadVideoToCloudflare(
-      uniqueKey,
-      await fs.promises.readFile(videoFile.path),
-      videoFile.mimetype
-    );
-  }
-
-  let newThumbnailUrl: string | null = null;
-  if (thumbnailFile) {
-    const [thumbnailUrlForDeletionForThisVideo] = await db
-      .select({ thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion })
-      .from(videos)
-      .where(eq(videos.id, Number(id)))
-      .limit(1);
-
-    await deleteFromCloudflare(
-      "komplex-video",
-      thumbnailUrlForDeletionForThisVideo.thumbnailUrlForDeletion ?? ""
-    );
-    newThumbnailUrl = await uploadImageToCloudflare(
-      uniqueKey,
-      await fs.promises.readFile(thumbnailFile.path),
-      thumbnailFile.mimetype
-    );
   }
 
   const updateData: Partial<typeof videos.$inferInsert> = {
     title,
     description,
-    type,
-    topic,
     updatedAt: new Date(),
   };
 
-  if (newVideoUrl) {
-    updateData.videoUrl = newVideoUrl;
-    updateData.videoUrlForDeletion = uniqueKey;
+  if (videoKey) {
+    try {
+      if (video.videoUrlForDeletion) {
+        await deleteFromCloudflare("komplex-video", video.videoUrlForDeletion);
+      }
+    } catch {}
+    updateData.videoUrl = `${process.env.R2_VIDEO_PUBLIC_URL}/${videoKey}`;
+    updateData.videoUrlForDeletion = videoKey;
   }
 
-  if (newThumbnailUrl) {
-    updateData.thumbnailUrl = newThumbnailUrl;
-    updateData.thumbnailUrlForDeletion = uniqueKey;
+  if (thumbnailKey) {
+    try {
+      if (video.thumbnailUrlForDeletion) {
+        await deleteFromCloudflare(
+          "komplex-image",
+          video.thumbnailUrlForDeletion
+        );
+      }
+    } catch {}
+    updateData.thumbnailUrl = `${process.env.R2_PHOTO_PUBLIC_URL}/${thumbnailKey}`;
+    updateData.thumbnailUrlForDeletion = thumbnailKey;
   }
 
-  const updateVideo = await db
+  await db
     .update(videos)
     .set(updateData)
-    .where(eq(videos.id, Number(id)))
-    .returning();
+    .where(eq(videos.id, Number(id)));
 
-  // cleanup temp files
-  if (videoFile) await fs.promises.unlink(videoFile.path).catch(() => {});
-  if (thumbnailFile)
-    await fs.promises.unlink(thumbnailFile.path).catch(() => {});
+  // If questions are provided, update exercise/questions/choices
+  if (Array.isArray(questionsPayload) && questionsPayload.length > 0) {
+    const [exercise] = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.videoId, Number(id)))
+      .limit(1);
 
-  return { data: { success: true, updateVideo } };
+    if (exercise) {
+      await db
+        .update(exercises)
+        .set({ updatedAt: new Date() })
+        .where(eq(exercises.id, exercise.id));
+
+      for (const question of questionsPayload) {
+        let questionIdToUse: number | null = null;
+
+        if (question.id && !isNaN(Number(question.id))) {
+          const [existingQuestionById] = await db
+            .select()
+            .from(questions)
+            .where(eq(questions.id, Number(question.id)))
+            .limit(1);
+
+          if (existingQuestionById) {
+            questionIdToUse = existingQuestionById.id;
+            await db
+              .update(questions)
+              .set({ title: question.title, updatedAt: new Date() })
+              .where(eq(questions.id, existingQuestionById.id));
+          }
+        }
+
+        if (!questionIdToUse) {
+          const [insertedQuestion] = await db
+            .insert(questions)
+            .values({
+              exerciseId: exercise.id,
+              title: question.title,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .returning();
+          questionIdToUse = insertedQuestion.id;
+        }
+
+        for (const choice of question.choices) {
+          if (choice.id && !isNaN(Number(choice.id))) {
+            const [existingChoice] = await db
+              .select()
+              .from(choices)
+              .where(eq(choices.id, Number(choice.id)))
+              .limit(1);
+            if (existingChoice) {
+              await db
+                .update(choices)
+                .set({
+                  text: choice.text,
+                  isCorrect: choice.isCorrect,
+                  updatedAt: new Date(),
+                })
+                .where(eq(choices.id, existingChoice.id));
+              continue;
+            }
+          }
+          await db.insert(choices).values({
+            questionId: Number(questionIdToUse),
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
+    }
+  }
+
+  return { data: { success: true } };
 };
 
 export const deleteVideo = async (id: number, userId: number) => {
@@ -253,6 +294,40 @@ export const deleteVideo = async (id: number, userId: number) => {
     .where(eq(userSavedVideos.videoId, Number(id)))
     .returning();
 
+  // get exercies for this video
+  const exerciseId = await db
+    .select()
+    .from(exercises)
+    .where(eq(exercises.videoId, Number(id)));
+  if (exerciseId && exerciseId.length > 0) {
+    // get quesitons for this video
+    const questionIds = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.exerciseId, Number(exerciseId[0].id)));
+
+    // delete choices for this video
+    for (const questionId of questionIds) {
+      // delete choices for this question
+      await db
+        .delete(choices)
+        .where(eq(choices.questionId, Number(questionId.id)))
+        .returning();
+    }
+
+    // delete questions for this video
+    await db
+      .delete(questions)
+      .where(eq(questions.exerciseId, Number(exerciseId[0].id)))
+      .returning();
+
+    // delete exercise for this video
+    const deletedExercise = await db
+      .delete(exercises)
+      .where(eq(exercises.videoId, Number(id)))
+      .returning();
+  }
+
   // Delete from Cloudflare
   if (doesThisUserOwnThisVideo.videoUrlForDeletion) {
     try {
@@ -276,20 +351,17 @@ export const deleteVideo = async (id: number, userId: number) => {
     }
   }
 
+  await db
+    .delete(userVideoHistory)
+    .where(eq(userVideoHistory.videoId, Number(id)));
+
   // Delete video record
   const deletedVideo = await db
     .delete(videos)
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
     .returning();
 
-  return {
-    data: {
-      success: true,
-      message: "Video deleted successfully",
-      deletedVideo,
-      deletedLikes,
-      deletedSaves,
-      deleteComments,
-    },
-  };
+  return { data: deletedVideo };
 };
+
+// Note: exercise update is now embedded in updateVideo when payload.questions is provided.

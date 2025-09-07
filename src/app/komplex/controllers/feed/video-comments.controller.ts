@@ -18,7 +18,7 @@ export const getVideoCommentsController = async (
       pageNumber
     );
 
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,

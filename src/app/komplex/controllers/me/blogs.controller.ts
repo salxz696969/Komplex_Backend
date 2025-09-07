@@ -10,7 +10,7 @@ export const getAllMyBlogsController = async (
   try {
     let userId = 1; // just assuming, //TODO: change
     const result = await blogService.getAllMyBlogs(userId);
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -24,13 +24,13 @@ export const postBlogController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await blogService.postBlog(
       req.body,
       req.files,
       Number(userId)
     );
-    return res.status(201).json(result.data);
+    return res.status(201).json(result);
   } catch (error) {
     return res
       .status(500)

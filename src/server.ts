@@ -56,8 +56,8 @@ app.use(
 
 // app routes
 
-app.use("/", routes);
-app.use("/admin", adminRoutes);
+app.use("/api/", routes);
+app.use("/api/admin", adminRoutes);
 
 // connection
 

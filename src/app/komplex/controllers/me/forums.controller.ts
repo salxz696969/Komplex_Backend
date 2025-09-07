@@ -10,7 +10,7 @@ export const getAllMyForumsController = async (
   try {
     const { userId } = req.user ?? { userId: 1 };
     const result = await forumService.getAllMyForums(req.query, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -30,7 +30,7 @@ export const postForumController = async (
       req.files,
       Number(userId)
     );
-    return res.status(201).json(result.data);
+    return res.status(201).json(result);
   } catch (error) {
     if ((error as Error).message === "Missing required fields") {
       return res
@@ -51,7 +51,7 @@ export const likeForumController = async (
     const { id } = req.params;
     const { userId } = req.user ?? { userId: 1 };
     const result = await forumByIdService.likeForum(id, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -71,7 +71,7 @@ export const unlikeForumController = async (
     const { id } = req.params;
     const { userId } = req.user ?? { userId: 1 };
     const result = await forumByIdService.unlikeForum(id, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Unauthorized") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -96,7 +96,7 @@ export const updateForumController = async (
       req.files,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Forum not found") {
       return res
@@ -123,7 +123,7 @@ export const deleteForumController = async (
     const { userId } = req.user ?? { userId: "1" };
     const { id } = req.params;
     const result = await forumByIdService.deleteForum(id, Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Forum not found") {
       return res
