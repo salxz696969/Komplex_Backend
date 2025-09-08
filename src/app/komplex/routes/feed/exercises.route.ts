@@ -6,11 +6,12 @@ import {
   // getExerciseStats, // GET /exercises/:id/stats - exercise statistics
   // getExerciseLeaderboard, // GET /exercises/:id/leaderboard - top performers
 } from "../../controllers/feed/exercises.controller.js";
+import { getSmallContentRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
-router.get("/", getExercisesController as any);
-router.get("/:id", getExerciseController as any);
+router.get("/", getSmallContentRateLimiter, getExercisesController as any);
+router.get("/:id", getSmallContentRateLimiter, getExerciseController as any);
 
 // TODO: Future features
 // router.get("/:id/stats", getExerciseStats); // Exercise statistics

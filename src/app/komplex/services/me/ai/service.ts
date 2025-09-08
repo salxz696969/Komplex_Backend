@@ -26,11 +26,20 @@ export const callAiAndWriteToHistory = async (prompt: string, language: string, 
 				.limit(5)
 				.then((res) => res.map((r) => r.prompt).join("\n"));
 		}
-		const response = await axios.post(`${process.env.FAST_API_KEY}`, {
-			input: prompt,
-			language,
-			previousContext,
-		});
+		const response = await axios.post(
+			`${process.env.FAST_API_KEY}`,
+			{
+				input: prompt,
+				language,
+				previousContext,
+			},
+			{
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-key": process.env.INTERNAL_API_KEY,
+				},
+			}
+		);
 		const result = response.data;
 		const aiResult = result.result;
 		if (aiResult) {

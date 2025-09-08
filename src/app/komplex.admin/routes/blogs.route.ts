@@ -4,12 +4,13 @@ import {
   getAllBlogs,
   getSavedBlogs,
 } from "../controllers/blogs.controller.js";
+import { adminGetSmallContentRateLimiter, adminSmallDeleteRateLimiter, adminSmallPostRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
 // Add your route handlers here
-router.get("/", getAllBlogs as any);
-router.post("/", postBlog as any);
-router.get("/:id/saved", getSavedBlogs as any);
+router.get("/", adminGetSmallContentRateLimiter, getAllBlogs as any);
+router.post("/", adminSmallPostRateLimiter, postBlog as any);
+router.get("/:id/saved", adminGetSmallContentRateLimiter, getSavedBlogs as any);
 
 export default router;

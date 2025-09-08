@@ -6,12 +6,13 @@ import {
   // getForumLikes, // GET /forums/:id/likes - who liked this forum
 } from "../../controllers/feed/forums.controller.js";
 import { verifyFirebaseToken } from "@/middleware/auth.js";
+import { getBigContentRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
-router.get("/", verifyFirebaseToken as any, getAllForumsController as any);
+router.get("/", verifyFirebaseToken as any, getBigContentRateLimiter, getAllForumsController as any);
 
-router.get("/:id", verifyFirebaseToken as any, getForumByIdController as any);
+router.get("/:id", verifyFirebaseToken as any, getBigContentRateLimiter, getForumByIdController as any);
 
 // TODO: Future features
 // router.get("/:id/likes", getForumLikes); // Who liked this forum
