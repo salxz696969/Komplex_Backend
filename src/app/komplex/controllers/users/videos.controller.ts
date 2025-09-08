@@ -8,6 +8,7 @@ export const getUserVideosController = async (
 ) => {
   try {
     const { userId } = req.params;
+    const {page, topic, type} = req.query;
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -15,7 +16,7 @@ export const getUserVideosController = async (
       });
     }
 
-    const result = await videoService.getUserVideos(Number(userId));
+    const result = await videoService.getUserVideos(Number(userId), page as string, topic as string, type as string);
     return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({

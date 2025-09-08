@@ -76,11 +76,11 @@ export const getExercises = async (req: Request, res: Response) => {
 export const getExercise = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params;
-    const cacheKey = `exercise:${id}`;
-    const cacheData = await redis.get(cacheKey);
-    if (cacheData) {
-      return res.status(200).json(JSON.parse(cacheData));
-    }
+		const cacheKey = `exercise:${id}`;
+		const cacheData = await redis.get(cacheKey);
+		if (cacheData) {
+			return res.status(200).json(JSON.parse(cacheData));
+		}
 
 		// Get the exercise
 		const exerciseResult = await db
@@ -189,7 +189,6 @@ export const createExercise = async (req: Request, res: Response) => {
 			}
 		}
 
-    
 		res.status(201).json({ message: "Exercise created successfully" });
 	} catch (error: any) {
 		res.status(500).json({ message: "Internal server error" + error.message });
@@ -199,7 +198,7 @@ export const createExercise = async (req: Request, res: Response) => {
 export const deleteExercise = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params;
-    const cacheKey = `exercise:${id}`;
+		const cacheKey = `exercise:${id}`;
 		// get question ids
 		const questionIds = await db
 			.select({
@@ -221,7 +220,7 @@ export const deleteExercise = async (req: Request, res: Response) => {
 
 		// delete exercise
 		await db.delete(exercises).where(eq(exercises.id, parseInt(id)));
-    await redis.del(cacheKey);
+		await redis.del(cacheKey);
 		res.status(200).json({ message: "Exercise deleted successfully" });
 	} catch (error) {
 		res.status(500).json({ message: "Internal server error" });
@@ -230,9 +229,9 @@ export const deleteExercise = async (req: Request, res: Response) => {
 
 export const getExerciseDashboard = async (req: Request, res: Response) => {
 	try {
-    const cacheKey = `exercise:dashboard`;
+		const cacheKey = `exercise:dashboard`;
 		// get total excercises
-    const cachedData = await redis.get(cacheKey);
+		const cachedData = await redis.get(cacheKey);
 		if (cachedData) {
 			return res.status(200).json(JSON.parse(cachedData));
 		}
@@ -258,12 +257,12 @@ export const getExerciseDashboard = async (req: Request, res: Response) => {
 			})
 			.from(userExerciseHistory);
 		const averageScore = totalScores[0].averageScore ? parseFloat(totalScores[0].averageScore) : 0;
-    const cacheData={
-      totalExercises,
-      totalAttempts,
-      averageScore
-    }
-    await redis.set(cacheKey, JSON.stringify(cacheData), { EX: 60 * 60 * 24 });
+		const cacheData = {
+			totalExercises,
+			totalAttempts,
+			averageScore,
+		};
+		await redis.set(cacheKey, JSON.stringify(cacheData), { EX: 60 * 60 * 24 });
 
 		res.status(200).json({
 			totalExercises,
@@ -279,7 +278,7 @@ export const updateExercise = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params;
 		const { duration, title, description, subject, grade, exerciseQuestions } = req.body;
-    const cacheKey = `exercise:${id}`;
+		const cacheKey = `exercise:${id}`;
 
 		const exercise = await db
 			.update(exercises)

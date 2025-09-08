@@ -1,6 +1,7 @@
 import { eq, sql, and, count, max } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { userExerciseHistory, exercises } from "@/db/schema.js";
+import { redis } from "@/db/redis/redisConfig.js";
 
 // export const getExercises = async (userId: number) => {
 //   // this is for getting exercises and just basic info like the number of questions,
@@ -57,51 +58,70 @@ import { userExerciseHistory, exercises } from "@/db/schema.js";
 // };
 
 export const getExerciseHistory = async (userId: number) => {
-  const history = await db
-    .select()
-    .from(userExerciseHistory)
-    .leftJoin(exercises, eq(userExerciseHistory.exerciseId, exercises.id))
-    .where(eq(userExerciseHistory.userId, userId));
+	const cacheKey = `exerciseHistory:userId:${userId}`;
+	const cached = await redis.get(cacheKey);
+	if (cached) {
+		return { data: JSON.parse(cached) };
+	}
 
-  return {
-    data: history.map((his) => ({
-      id: his.user_exercise_history.exerciseId,
-      title: his.exercises?.title,
-      timeTaken: his.user_exercise_history.timeTaken,
-      score: his.user_exercise_history.score,
-      createdAt: his.user_exercise_history.createdAt?.toISOString(),
-    })),
-  };
+	const history = await db
+		.select()
+		.from(userExerciseHistory)
+		.leftJoin(exercises, eq(userExerciseHistory.exerciseId, exercises.id))
+		.where(eq(userExerciseHistory.userId, userId));
+	await redis.set(cacheKey, JSON.stringify(history), { EX: 600 });
+	return {
+		data: history.map((his) => ({
+			id: his.user_exercise_history.exerciseId,
+			title: his.exercises?.title,
+			timeTaken: his.user_exercise_history.timeTaken,
+			score: his.user_exercise_history.score,
+			createdAt: his.user_exercise_history.createdAt?.toISOString(),
+		})),
+	};
 };
 
 export const getExerciseDashboard = async (userId: number) => {
-  const totalExercisesCompleted = await db
-    .select({
-      count: sql<number>`count(distinct ${userExerciseHistory.exerciseId})`,
-    })
-    .from(userExerciseHistory)
-    .where(eq(userExerciseHistory.userId, userId));
-  const totalAttempts = await db
-    .select({
-      count: sql<number>`count(${userExerciseHistory.id})`,
-    })
-    .from(userExerciseHistory)
-    .where(eq(userExerciseHistory.userId, userId));
+	const cacheKey = `exerciseDashboard:userId:${userId}`;
+	const cached = await redis.get(cacheKey);
+	if (cached) {
+		return { data: JSON.parse(cached) };
+	}
+	const totalExercisesCompleted = await db
+		.select({
+			count: sql<number>`count(distinct ${userExerciseHistory.exerciseId})`,
+		})
+		.from(userExerciseHistory)
+		.where(eq(userExerciseHistory.userId, userId));
+	const totalAttempts = await db
+		.select({
+			count: sql<number>`count(${userExerciseHistory.id})`,
+		})
+		.from(userExerciseHistory)
+		.where(eq(userExerciseHistory.userId, userId));
 
-  const averageScore = await db
-    .select({
-      average: sql<number>`avg(${userExerciseHistory.score})`,
-    })
-    .from(userExerciseHistory)
-    .where(eq(userExerciseHistory.userId, userId));
-
-  return {
-    data: {
-      totalExercisesCompleted: Number(totalExercisesCompleted[0].count),
-      totalAttempts: Number(totalAttempts[0].count),
-      averageScore: Number(averageScore[0].average),
-    },
-  };
+	const averageScore = await db
+		.select({
+			average: sql<number>`avg(${userExerciseHistory.score})`,
+		})
+		.from(userExerciseHistory)
+		.where(eq(userExerciseHistory.userId, userId));
+	await redis.set(
+		cacheKey,
+		JSON.stringify({
+			totalExercisesCompleted: Number(totalExercisesCompleted[0].count),
+			totalAttempts: Number(totalAttempts[0].count),
+			averageScore: Number(averageScore[0].average),
+		}),
+		{ EX: 600 }
+	);
+	return {
+		data: {
+			totalExercisesCompleted: Number(totalExercisesCompleted[0].count),
+			totalAttempts: Number(totalAttempts[0].count),
+			averageScore: Number(averageScore[0].average),
+		},
+	};
 };
 
 // get number of attempts

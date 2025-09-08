@@ -7,6 +7,7 @@ export const getUserForumsController = async (
   res: Response
 ) => {
   try {
+    const { page, topic, type } = req.query;
     const { userId } = req.params;
     if (!userId) {
       return res.status(400).json({
@@ -15,7 +16,7 @@ export const getUserForumsController = async (
       });
     }
 
-    const result = await forumService.getUserForums(Number(userId));
+    const result = await forumService.getUserForums(Number(userId), page as string);
     return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
