@@ -15,7 +15,7 @@ export const getUserProfile = async (userId: number) => {
       .from(users)
       .where(eq(users.id, userId));
     await redis.set(cacheKey, JSON.stringify(userProfile), { EX: 300 });
-    return { data: userProfile };
+    return { data: userProfile[0] };
   } catch (error) {
     throw new Error("Failed to get user profile");
   }

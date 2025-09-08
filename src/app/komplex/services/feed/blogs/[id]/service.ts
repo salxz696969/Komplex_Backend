@@ -93,7 +93,7 @@ export const getBlogById = async (id: string, userId: number) => {
       ...blogData,
       viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
       likeCount: dynamic[0]?.likeCount ?? 0,
-      isSave: !!dynamic[0]?.isSave,
+      isSaved: !!dynamic[0]?.isSave,
     };
   
     return { data: blogWithMedia };

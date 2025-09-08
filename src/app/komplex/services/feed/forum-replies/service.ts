@@ -137,9 +137,7 @@ export const getAllRepliesForAComment = async (
   });
 
   return {
-    data: {
-      repliesWithMedia,
-      hasMore: repliesWithMedia.length === limit,
-    },
+    data: repliesWithMedia,
+    hasMore: repliesWithMedia.length === limit,
   };
 };

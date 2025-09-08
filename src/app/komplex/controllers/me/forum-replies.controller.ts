@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthenticatedRequest } from "@/types/request.js";
 import * as forumReplyService from "@/app/komplex/services/me/forum-replies/service.js";
 import * as forumReplyByIdService from "@/app/komplex/services/me/forum-replies/[id]/service.js";
@@ -8,7 +8,7 @@ export const postForumReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumReplyService.postForumReply(
       id,
@@ -16,7 +16,7 @@ export const postForumReplyController = async (
       req.files,
       Number(userId)
     );
-    return res.status(201).json(result.data);
+    return res.status(201).json(result);
   } catch (error) {
     if ((error as Error).message === "Missing required fields") {
       return res
@@ -35,7 +35,7 @@ export const updateForumReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumReplyByIdService.updateForumReply(
       id,
@@ -43,7 +43,7 @@ export const updateForumReplyController = async (
       req.files,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Reply not found") {
       return res
@@ -67,13 +67,13 @@ export const deleteForumReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumReplyByIdService.deleteForumReply(
       id,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Reply not found") {
       return res
@@ -92,19 +92,15 @@ export const likeForumReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
 
     const result = await forumReplyByIdService.likeForumReply(
       id,
       Number(userId)
     );
 
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -118,19 +114,15 @@ export const unlikeForumReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
 
     const result = await forumReplyByIdService.unlikeForumReply(
       id,
       Number(userId)
     );
 
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,

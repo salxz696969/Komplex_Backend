@@ -1,74 +1,11 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/index.js";
-import {
-  blogs,
-  blogMedia,
-  users,
-  userSavedBlogs,
-} from "@/db/schema.js";
+import { blogs, blogMedia, users, userSavedBlogs } from "@/db/schema.js";
 import {
   uploadImageToCloudflare,
   deleteFromCloudflare,
 } from "@/db/cloudflare/cloudflareFunction.js";
 import { redis } from "@/db/redis/redisConfig.js";
-
-// export const getBlogById = async (id: string, userId: number) => {
-//   const blog = await db
-//     .select({
-//       id: blogs.id,
-//       userId: blogs.userId,
-//       title: blogs.title,
-//       description: blogs.description,
-//       type: blogs.type,
-//       topic: blogs.topic,
-//       viewCount: blogs.viewCount,
-//       likeCount: blogs.likeCount,
-//       createdAt: blogs.createdAt,
-//       updatedAt: blogs.updatedAt,
-//       mediaUrl: blogMedia.url,
-//       mediaType: blogMedia.mediaType,
-//       username: sql`${users.firstName} || ' ' || ${users.lastName}`,
-//       isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
-//     })
-//     .from(blogs)
-//     .leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
-//     .leftJoin(users, eq(blogs.userId, users.id))
-//     .leftJoin(
-//       userSavedBlogs,
-//       and(
-//         eq(userSavedBlogs.blogId, blogs.id),
-//         eq(userSavedBlogs.userId, Number(userId))
-//       )
-//     )
-//     .where(eq(blogs.id, Number(id)));
-
-//   if (!blog || blog.length === 0) {
-//     throw new Error("Blog not found");
-//   }
-
-//   const blogWithMedia = {
-//     id: blog[0].id,
-//     userId: blog[0].userId,
-//     title: blog[0].title,
-//     description: blog[0].description,
-//     type: blog[0].type,
-//     topic: blog[0].topic,
-//     viewCount: (blog[0]?.viewCount ?? 0) + 1,
-//     likeCount: blog[0].likeCount,
-//     createdAt: blog[0].createdAt,
-//     updatedAt: new Date(),
-//     username: blog[0].username,
-//     isSaved: !!blog[0].isSave,
-//     media: blog
-//       .filter((b) => b.mediaUrl)
-//       .map((b) => ({
-//         url: b.mediaUrl,
-//         type: b.mediaType,
-//       })),
-//   };
-
-//   return { data: blogWithMedia };
-// };
 
 export const updateBlog = async (
   id: string,
@@ -206,10 +143,9 @@ export const updateBlog = async (
       })),
   };
 
-  await redis.del(`blogs:${id}`);
   await redis.set(`blogs:${id}`, JSON.stringify(blogWithMedia), { EX: 600 });
 
-  return { data: { updatedBlog, newBlogMedia, deleteMedia } };
+  return { data: updatedBlog, newBlogMedia };
 };
 
 export const deleteBlog = async (id: string, userId: number) => {
@@ -259,12 +195,7 @@ export const deleteBlog = async (id: string, userId: number) => {
   await redis.del(`blogs:${id}`);
 
   return {
-    data: {
-      success: true,
-      message: "Blog deleted successfully",
-      deletedBlog,
-      deletedMedia,
-    },
+    data: deletedBlog,
   };
 };
 
@@ -280,11 +211,7 @@ export const saveBlog = async (id: string, userId: number) => {
     updatedAt: new Date(),
   });
   return {
-    data: {
-      success: true,
-      message: "Blog saved successfully",
-      blog: blogToSave,
-    },
+    data: blogToSave,
   };
 };
 
@@ -308,10 +235,6 @@ export const unsaveBlog = async (id: string, userId: number) => {
   }
 
   return {
-    data: {
-      success: true,
-      message: "Blog unsaved successfully",
-      blog: blogToUnsave,
-    },
+    data: blogToUnsave,
   };
 };

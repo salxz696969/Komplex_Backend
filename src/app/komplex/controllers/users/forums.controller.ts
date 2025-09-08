@@ -7,15 +7,15 @@ export const getUserForumsController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.params;
-    if (!userId) {
+    const { id } = req.params;
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "User ID is required",
       });
     }
 
-    const result = await forumService.getUserForums(Number(userId));
+    const result = await forumService.getUserForums(Number(id));
     return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({

@@ -95,14 +95,12 @@ export const postForumComment = async (
 
   if (cached) {
     const parsed = JSON.parse(cached);
-    parsed.commentsWithMedia.push(forumCommentWithMedia);
+    parsed.push(forumCommentWithMedia);
     await redis.set(cacheKey, JSON.stringify(parsed), { EX: 600 });
   } else {
-    await redis.set(
-      cacheKey,
-      JSON.stringify({ commentsWithMedia: [forumCommentWithMedia] }),
-      { EX: 600 }
-    );
+    await redis.set(cacheKey, JSON.stringify([forumCommentWithMedia]), {
+      EX: 600,
+    });
   }
 
   // Update last page info in Redis
@@ -115,10 +113,7 @@ export const postForumComment = async (
   );
 
   return {
-    data: {
-      success: true,
-      comment: newForumComment,
-      newCommentMedia,
-    },
+    data: forumCommentWithMedia,
+    success: true,
   };
 };

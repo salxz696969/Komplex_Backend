@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthenticatedRequest } from "@/types/request.js";
 import * as forumCommentService from "@/app/komplex/services/me/forum-comments/service.js";
 import * as forumCommentByIdService from "@/app/komplex/services/me/forum-comments/[id]/service.js";
@@ -65,7 +65,7 @@ export const postForumCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumCommentService.postForumComment(
       id,
@@ -92,7 +92,7 @@ export const likeForumCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
 
     if (!userId) {
@@ -118,7 +118,7 @@ export const unlikeForumCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
 
     if (!userId) {
