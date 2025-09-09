@@ -165,7 +165,6 @@ export const deleteVideoController = async (
       return res.status(404).json({
         success: false,
         message: "Video not found or unauthorized",
-        result: result?.gotToStep,
       });
     }
     return res.status(500).json({

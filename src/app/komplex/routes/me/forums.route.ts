@@ -11,32 +11,53 @@ import {
   // getLikedForums, // GET /me/liked-forums - forums I liked
   // getSavedForums, // GET /me/saved-forums - forums I saved
 } from "../../controllers/me/forums.controller.js";
+import {
+  deleteBigRateLimiter,
+  postBigRateLimiter,
+  updateBigRateLimiter,
+  getBigContentRateLimiter,
+  updateSmallRateLimiter,
+} from "@/middleware/redisLimiter.js";
 import { verifyFirebaseToken } from "@/middleware/auth.js";
 
 const router = Router();
 
-router.get("/", verifyFirebaseToken as any, getAllMyForumsController as any); // GET /me/forums - my forums
+router.get(
+  "/",
+  verifyFirebaseToken as any,
+  getBigContentRateLimiter,
+  getAllMyForumsController as any
+); // GET /me/forums - my forums
 router.post(
   "/",
   verifyFirebaseToken as any,
+  postBigRateLimiter,
   uploadImages.array("images", 4),
   postForumController as any
 ); // POST /me/forums - create forum
 router.put(
   "/:id",
-  uploadImages.array("images", 4),
   verifyFirebaseToken as any,
+  updateBigRateLimiter,
+  uploadImages.array("images", 4),
   updateForumController as any
 ); // PUT /me/forums/:id - update forum
-router.delete("/:id", verifyFirebaseToken as any, deleteForumController as any); // DELETE /me/forums/:id - delete forum
+router.delete(
+  "/:id",
+  verifyFirebaseToken as any,
+  deleteBigRateLimiter,
+  deleteForumController as any
+); // DELETE /me/forums/:id - delete forum
 router.patch(
   "/:id/like",
   verifyFirebaseToken as any,
+  updateSmallRateLimiter,
   likeForumController as any
 ); // PATCH /me/forums/:id/like - like forum
 router.patch(
   "/:id/unlike",
   verifyFirebaseToken as any,
+  updateSmallRateLimiter,
   unlikeForumController as any
 ); // PATCH /me/forums/:id/unlike - unlike forum
 

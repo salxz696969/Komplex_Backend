@@ -3,7 +3,6 @@ import { blogs, blogMedia, users, userSavedBlogs } from "@/db/schema.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { eq, and, sql } from "drizzle-orm";
 
-
 export const getBlogById = async (id: string, userId: number) => {
     const cacheKey = `blogs:${id}`;
   

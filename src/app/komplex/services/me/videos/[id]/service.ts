@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import {
   videoLikes,
@@ -9,14 +9,11 @@ import {
   questions,
   choices,
   userVideoHistory,
+  users,
 } from "@/db/schema.js";
-import {
-  uploadVideoToCloudflare,
-  uploadImageToCloudflare,
-  deleteFromCloudflare,
-} from "@/db/cloudflare/cloudflareFunction.js";
+import { deleteFromCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
 import { deleteVideoCommentInternal } from "@/app/komplex/services/me/video-comments/[id]/service.js";
-import fs from "fs";
+import { redis } from "@/db/redis/redisConfig.js";
 
 export const likeVideo = async (videoId: number, userId: number) => {
   if (!userId) {
@@ -172,10 +169,60 @@ export const updateVideo = async (
     updateData.thumbnailUrlForDeletion = thumbnailKey;
   }
 
-  await db
+  const updatedVideo = await db
     .update(videos)
     .set(updateData)
-    .where(eq(videos.id, Number(id)));
+    .where(eq(videos.id, Number(id)))
+    .returning({ id: videos.id });
+
+  const [videoRow] = await db
+    .select({
+      id: videos.id,
+      userId: videos.userId,
+      title: videos.title,
+      description: videos.description,
+      duration: videos.duration,
+      videoUrl: videos.videoUrl,
+      thumbnailUrl: videos.thumbnailUrl,
+      videoUrlForDeletion: videos.videoUrlForDeletion,
+      thumbnailUrlForDeletion: videos.thumbnailUrlForDeletion,
+      viewCount: videos.viewCount,
+      createdAt: videos.createdAt,
+      updatedAt: videos.updatedAt,
+      username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+      isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
+      isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
+      likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
+      saveCount: sql`COUNT(DISTINCT ${userSavedVideos.id})`,
+    })
+    .from(videos)
+    .leftJoin(users, eq(videos.userId, users.id))
+    .leftJoin(
+      userSavedVideos,
+      and(
+        eq(userSavedVideos.videoId, videos.id),
+        eq(userSavedVideos.userId, Number(userId))
+      )
+    )
+    .leftJoin(
+      videoLikes,
+      and(
+        eq(videoLikes.videoId, videos.id),
+        eq(videoLikes.userId, Number(userId))
+      )
+    )
+    .where(eq(videos.id, updatedVideo[0].id))
+    .groupBy(
+      videos.id,
+      users.firstName,
+      users.lastName,
+      userSavedVideos.videoId,
+      videoLikes.videoId,
+      userSavedVideos.id,
+      videoLikes.id
+    );
+  const cacheVideoKey = `video:${videoRow.id}`;
+  await redis.set(cacheVideoKey, JSON.stringify(videoRow), { EX: 600 });
 
   // If questions are provided, update exercise/questions/choices
   if (Array.isArray(questionsPayload) && questionsPayload.length > 0) {
@@ -279,7 +326,56 @@ export const updateVideo = async (
           updatedAt: new Date(),
         });
       }
+
+      // Fetch updated exercises/questions/choices and cache in Redis
+      const videoExercisesRows = await db
+        .select()
+        .from(exercises)
+        .where(eq(exercises.videoId, Number(id)))
+        .leftJoin(questions, eq(exercises.id, questions.exerciseId))
+        .leftJoin(choices, eq(questions.id, choices.questionId))
+        .groupBy(exercises.id, questions.id, choices.id);
+
+      const videoExerciseMap = new Map();
+
+      for (const row of videoExercisesRows) {
+        const exercise = row.exercises;
+        if (!videoExerciseMap.has(exercise.id)) {
+          videoExerciseMap.set(exercise.id, {
+            ...exercise,
+            questions: [],
+          });
+        }
+        const exerciseObj = videoExerciseMap.get(exercise.id);
+
+        if (row.questions?.id) {
+          let question = exerciseObj.questions.find(
+            (q: any) => q.id === row.questions?.id
+          );
+          if (!question) {
+            question = { ...row.questions, choices: [] };
+            exerciseObj.questions.push(question);
+          }
+
+          if (row.choices?.id) {
+            question.choices.push(row.choices);
+          }
+        }
+      }
+
+      const videoExercises = Array.from(videoExerciseMap.values());
+      const cacheExercisesKey = `video:exercises:${id}`;
+      await redis.set(cacheExercisesKey, JSON.stringify(videoExercises), {
+        EX: 600,
+      });
     }
+  }
+  await redis.del(`dashboardData:${userId}`);
+  const myVideoKeys: string[] = await redis.keys(
+    `myVideos:${userId}:type:*:topic:*`
+  );
+  if (myVideoKeys.length > 0) {
+    await redis.del(myVideoKeys);
   }
 
   return { data: { success: true, gotToStep } };

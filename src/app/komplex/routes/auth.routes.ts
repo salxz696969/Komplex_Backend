@@ -4,10 +4,11 @@ import {
   handleSignup,
   handleSocialLogIn,
 } from "../controllers/auth.controller.js";
+import { userLoginRateLimiter, userSignupRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = express.Router();
 
-router.post("/signup", handleSignup as any);
-router.post("/social-login", handleSocialLogIn as any);
+router.post("/signup", userSignupRateLimiter, handleSignup as any);
+router.post("/social-login", userLoginRateLimiter, handleSocialLogIn as any);
 
 export default router;

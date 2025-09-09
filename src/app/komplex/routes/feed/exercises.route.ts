@@ -7,11 +7,12 @@ import {
   // getExerciseStats, // GET /exercises/:id/stats - exercise statistics
   // getExerciseLeaderboard, // GET /exercises/:id/leaderboard - top performers
 } from "../../controllers/feed/exercises.controller.js";
+import { getSmallContentRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
-router.get("/", verifyFirebaseToken as any, getExercisesController as any);
-router.get("/:id", verifyFirebaseToken as any, getExerciseController as any);
+router.get("/", verifyFirebaseToken as any, getSmallContentRateLimiter, getExercisesController as any);
+router.get("/:id", verifyFirebaseToken as any, getSmallContentRateLimiter, getExerciseController as any);
 
 // TODO: Future features
 // router.get("/:id/stats", getExerciseStats); // Exercise statistics

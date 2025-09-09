@@ -193,6 +193,12 @@ export const deleteBlog = async (id: string, userId: number) => {
     .returning();
 
   await redis.del(`blogs:${id}`);
+  await redis.del(`dashboardData:${userId}`);
+  const redisKey = `userBlogs:${userId}:type:*:topic:*:page:*`;
+  const myBlogKeys: string[] = await redis.keys(redisKey);
+  if (myBlogKeys.length > 0) {
+    await redis.del(myBlogKeys);
+  }
 
   return {
     data: deletedBlog,
