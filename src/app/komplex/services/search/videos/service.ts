@@ -5,7 +5,7 @@ import { users, userSavedVideos, videoLikes } from "@/db/schema.js";
 import { meilisearch } from "@/meilisearch/meilisearchConfig.js";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
-export const searchVideoService = async (query: string, limit: number, offset: number, userId: number) => {
+export const searchVideosService = async (query: string, limit: number, offset: number, userId: number) => {
 	try {
 		const searchResults = await meilisearch.index("videos").search(query, {
 			limit,

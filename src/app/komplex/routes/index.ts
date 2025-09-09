@@ -4,11 +4,12 @@ import meRouter from "./me/index.js";
 import usersRouter from "./users/index.js";
 import authRouter from "./auth.routes.js";
 import uploadRouter from "./upload.route.js";
+import searchRouter from "./search/index.js";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-  res.status(200).json({ message: "Welcome to the KOMPLEX API" });
+	res.status(200).json({ message: "Welcome to the KOMPLEX API" });
 });
 
 router.use("/feed", feedRouter); // Public content discovery
@@ -19,5 +20,5 @@ router.use("/users", usersRouter); // Other users' content
 router.use("/auth", authRouter);
 router.use("/upload", uploadRouter);
 
-
+router.use("/search", searchRouter);
 export default router;
