@@ -23,7 +23,7 @@ export const getAllMyVideos = async (query: any, userId: number) => {
 	const cached = await redis.get(cacheKey);
 	const parsedData = cached ? JSON.parse(cached) : null;
 	if (parsedData) {
-		return { parsedData };
+		return  parsedData ;
 	}
 
 	const videoRows = await db

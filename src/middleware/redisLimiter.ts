@@ -53,7 +53,7 @@ export const postSmallRateLimiter = createRateLimiterMiddleware(
 );
 export const postVideoRateLimiter = createRateLimiterMiddleware(
   createLimiter({
-    points: 2,
+    points: 10,
     duration: 60,
     blockDuration: 60,
     keyPrefix: "post-video",
