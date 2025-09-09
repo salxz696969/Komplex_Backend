@@ -1,6 +1,6 @@
 import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { users } from "./users";
-import { feedbackStatusEnum } from "./feedback_status";
+import { users } from "./users.js";
+import { feedbackStatusEnum } from "./feedback_status.js";
 
 export const feedbacks = pgTable("feedbacks", {
   id: serial("id").primaryKey(),

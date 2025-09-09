@@ -1,5 +1,5 @@
 import { pgTable, varchar, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { questions } from "../schema";
+import { questions } from "../schema.js";
 
 export const choices = pgTable("choices", {
 	id: serial("id").primaryKey(),

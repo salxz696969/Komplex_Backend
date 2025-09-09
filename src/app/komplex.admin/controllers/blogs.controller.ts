@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction";
-import { db } from "../../../db";
-import { blogs, users } from "../../../db/schema";
+} from "../../../db/cloudinary/cloundinaryFunction.js";
+import { db } from "../../../db/index.js";
+import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { blogMedia } from "../../../db/models/blog_media";
+import { blogMedia } from "../../../db/models/blog_media.js";
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
@@ -123,7 +123,8 @@ export const getAllBlogs = async (req: AuthenticatedRequest, res: Response) => {
               updatedAt: blogs.updatedAt,
             })
             .from(blogs)
-            .leftJoin(users, eq(blogs.userId, users.id));
+            .leftJoin(users, eq(blogs.userId, users.id))
+            .leftJoin(userSavedBlogs, eq(blogs.id, userSavedBlogs.blogId));
 
     const blogWithMedia = await Promise.all(
       blogsFromDb.map(async (blog) => {
@@ -214,6 +215,48 @@ export const likeBlog = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     return res.json(blog).status(200);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const getSavedBlogs = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const userId = 1; // TO CHANGE
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const blog = await db
+      .select()
+      .from(blogs)
+      .where(eq(blogs.id, Number(id)));
+
+    if (!blog || blog.length === 0 || !blog[0]) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Blog not found" });
+    }
+
+    const savedBlogs = await db
+      .select()
+      .from(userSavedBlogs)
+      .where(eq(userSavedBlogs.blogId, Number(id)))
+      .leftJoin(users, eq(userSavedBlogs.userId, users.id));
+
+    const savedBlogsWithUser = savedBlogs.map((savedBlog) => ({
+      username: savedBlog.users?.firstName + " " + savedBlog.users?.lastName,
+      createdAt: savedBlog.user_saved_blogs.createdAt,
+    }));
+    return res.status(200).json(savedBlogsWithUser);
   } catch (error) {
     return res.status(500).json({
       success: false,

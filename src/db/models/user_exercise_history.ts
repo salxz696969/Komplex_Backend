@@ -1,12 +1,5 @@
-import { table } from "console";
-import {
-  pgTable,
-  varchar,
-  integer,
-  timestamp,
-  serial,
-} from "drizzle-orm/pg-core";
-import { exercises, users } from "../schema";
+import { pgTable, varchar, integer, timestamp, serial } from "drizzle-orm/pg-core";
+import { exercises, users } from "../schema.js";
 
 export const userExerciseHistory = pgTable(
   "user_exercise_history",

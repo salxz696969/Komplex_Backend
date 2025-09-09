@@ -1,8 +1,10 @@
 import { Router } from "express";
-import { getAllVideos } from "../controllers/videos.controller";
+import { getAllVideos, getVideoById } from "../controllers/videos.controller.js";
+import { adminGetVideoRateLimiter } from "@/middleware/redisLimiter.js";
 const router = Router();
 
 // Add your route handlers here
-router.get("/", getAllVideos);
+router.get("/", adminGetVideoRateLimiter, getAllVideos);
+router.get("/:id", adminGetVideoRateLimiter, getVideoById);
 
 export default router;

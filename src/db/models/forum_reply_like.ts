@@ -1,6 +1,6 @@
 import { table } from "console";
 import { pgTable, serial, integer, timestamp } from "drizzle-orm/pg-core";
-import { forumReplies, users } from "../schema";
+import { forumReplies, users } from "../schema.js";
 
 export const forumReplyLikes = pgTable("forum_reply_likes", {
     id: serial("id").primaryKey(),
