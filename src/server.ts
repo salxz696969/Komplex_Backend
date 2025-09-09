@@ -2,8 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
-import swaggerUi from "swagger-ui-express";
-import { specs } from "./config/swagger.js";
 import { redis } from "./db/redis/redisConfig.js";
 
 import routes from "./app/komplex/routes/index.js";
@@ -50,23 +48,12 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 app.use(
   cors({
-    origin: ["http://localhost:4000", "http://localhost:3000"],
+    origin: [process.env.CORS_ORIGIN as string, "http://localhost:3000"],
     credentials: true,
   })
 );
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json());
-
-// Swagger documentation
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(specs, {
-    explorer: true,
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "KOMPLEX API Documentation",
-  })
-);
 
 app.use(globalRateLimiter);
 app.get("/ping", (req, res) => {
