@@ -2,6 +2,7 @@ import { avg, count, eq, inArray, sum } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import {
   choices,
+  exerciseQuestionHistory,
   exercises,
   questions,
   userExerciseHistory,
@@ -15,6 +16,7 @@ export const getExercises = async (req: Request, res: Response) => {
   try {
     const { grade } = req.query;
     const cacheKey = `exercises:${grade || "all"}`;
+	await redis.del(cacheKey);
 
     const cacheData = await redis.get(cacheKey);
     if (cacheData) {
@@ -52,7 +54,7 @@ export const getExercises = async (req: Request, res: Response) => {
     } else {
       result = await baseQuery.groupBy(exercises.id);
     }
-    await redis.set(cacheKey, JSON.stringify(result), { EX: 60 * 60 * 24 });
+    await redis.set(cacheKey, JSON.stringify(result), { EX: 1 });
 
     return res.status(200).json(result);
   } catch (error: any) {
@@ -232,14 +234,21 @@ export const deleteExercise = async (req: Request, res: Response) => {
     );
 
     // delete question
+    for (let questionId of questionIds) {
+      await db
+        .delete(exerciseQuestionHistory)
+        .where(eq(exerciseQuestionHistory.questionId, questionId.id));
+    }
     await db.delete(questions).where(eq(questions.exerciseId, parseInt(id)));
 
     // delete exercise
+    await db
+      .delete(userExerciseHistory)
+      .where(eq(userExerciseHistory.exerciseId, parseInt(id)));
     await db.delete(exercises).where(eq(exercises.id, parseInt(id)));
-    await redis.del(cacheKey);
     res.status(200).json({ message: "Exercise deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" + error });
   }
 };
 
