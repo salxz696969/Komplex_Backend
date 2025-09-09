@@ -11,6 +11,7 @@ import {
 	choices,
 } from "@/db/schema.js";
 import { redis } from "@/db/redis/redisConfig.js";
+import { meilisearch } from "@/meilisearch/meilisearchConfig.js";
 
 export const getAllMyVideos = async (query: any, userId: number) => {
 	const { topic, type, page } = query;
@@ -23,7 +24,7 @@ export const getAllMyVideos = async (query: any, userId: number) => {
 	const cached = await redis.get(cacheKey);
 	const parsedData = cached ? JSON.parse(cached) : null;
 	if (parsedData) {
-		return  parsedData ;
+		return parsedData;
 	}
 
 	const videoRows = await db
@@ -148,6 +149,14 @@ export const postVideo = async (body: any, userId: number) => {
 	const redisKey = `videos:${newVideo[0].id}`;
 
 	await redis.set(redisKey, JSON.stringify(videoWithMedia), { EX: 600 });
+	const meilisearchData={
+		id: videoWithMedia.id,
+		title: videoWithMedia.title,
+		description: videoWithMedia.description,
+		type: videoWithMedia.type,
+		topic: videoWithMedia.topic,
+	}
+	await meilisearch.index("videos").addDocuments([meilisearchData]);
 
 	// Create exercise for video quiz
 	console.log(questions);

@@ -3,6 +3,7 @@ import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { forums, forumMedias, users, forumLikes } from "@/db/schema.js";
 import { uploadImageToCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
+import { meilisearch } from "@/meilisearch/meilisearchConfig.js";
 
 export const getAllMyForums = async (
   query: any,
@@ -186,6 +187,7 @@ export const postForum = async (body: any, files: any, userId: number) => {
     })),
   };
   const redisKey = `forums:${newForum.id}`;
+  await meilisearch.index("forums").addDocuments([forumWithMedia]);
 
   await redis.set(redisKey, JSON.stringify(forumWithMedia), { EX: 600 });
   await redis.del(`dashboardData:${userId}`);

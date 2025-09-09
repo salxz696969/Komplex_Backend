@@ -5,6 +5,7 @@ import { uploadImageToCloudflare, deleteFromCloudflare } from "@/db/cloudflare/c
 import { deleteReply } from "../../forum-replies/[id]/service.js";
 import { deleteComment } from "../../forum-comments/[id]/service.js";
 import { redis } from "@/db/redis/redisConfig.js";
+import { meilisearch } from "@/meilisearch/meilisearchConfig.js";
 
 export const updateForum = async (id: string, body: any, files: any, userId: number) => {
 	const { title, description, type, topic, photosToRemove } = body;
@@ -129,6 +130,15 @@ export const updateForum = async (id: string, body: any, files: any, userId: num
 				type: b.mediaType,
 			})),
 	};
+
+	const meilisearchData = {
+		id: forumWithMedia.id,
+		title: forumWithMedia.title,
+		description: forumWithMedia.description,
+		type: forumWithMedia.type,
+		topic: forumWithMedia.topic,
+	};
+	await meilisearch.index("forums").addDocuments([meilisearchData]);
 	await redis.set(`forums:${id}`, JSON.stringify(forumWithMedia), {
 		EX: 600,
 	});
@@ -197,6 +207,8 @@ export const deleteForum = async (id: string, userId: number) => {
 		await redis.del(myForumKeys);
 	}
 	await redis.del(`dashboardData:${userId}`);
+
+	await meilisearch.index("forums").deleteDocument(String(id));
 
 	return {
 		data: {
