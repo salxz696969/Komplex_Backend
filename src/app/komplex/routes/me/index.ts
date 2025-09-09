@@ -19,7 +19,11 @@ const router = Router();
 
 // My content and interactions
 router.get("/", verifyFirebaseToken as any, getCurrentUser as any);
-router.get("/dashboard", verifyFirebaseToken as any, getUserContentDashboardController as any); // GET /me/dashboard - my dashboard
+router.get(
+  "/dashboard",
+  verifyFirebaseToken as any,
+  getUserContentDashboardController as any
+); // GET /me/dashboard - my dashboard
 
 router.use("/blogs", blogsRouter);
 
