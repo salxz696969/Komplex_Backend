@@ -21,7 +21,7 @@ export const getExerciseById = async (id: string, userId: number) => {
       )
     );
 
-  if (!maxScore[0].maxScore) {
+  if (maxScore[0].maxScore === null) {
     throw new Error("History not found");
   }
 
@@ -149,9 +149,14 @@ function transformSectionScores(questionHistory: any[]) {
   return sectionScoresByAttempt;
 }
 
-export const submitExercise = async (id: string, answers: any[], score: number, timeTaken: number, userId: number) => {
+export const submitExercise = async (
+  id: string,
+  answers: any[],
+  score: number,
+  timeTaken: number,
+  userId: number
+) => {
   try {
-
     const exerciseHistory = await db
       .insert(userExerciseHistory)
       .values({

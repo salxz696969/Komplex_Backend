@@ -71,7 +71,6 @@ export const postVideoComment = async (
       type: m.mediaType,
     })),
   };
-
   const limit = 20;
   let { currentCommentAmount, lastPage } = JSON.parse(
     (await redis.get(`videoComments:video:${id}:lastPage`)) ||
@@ -87,6 +86,7 @@ export const postVideoComment = async (
   }
 
   const cacheKey = `videoComments:video:${id}:page:${lastPage}`;
+
   const cached = await redis.get(cacheKey);
 
   if (cached) {

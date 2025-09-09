@@ -8,14 +8,14 @@ export const postVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { description } = req.body;
     const { id } = req.params;
     const files = req.files;
 
     const result = await videoCommentService.postVideoComment(
       id,
-      Number(userId),
+      userId,
       description,
       files
     );
@@ -40,14 +40,14 @@ export const updateVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
     const { description, mediasToRemove } = req.body;
     const files = req.files;
 
     const result = await videoCommentByIdService.updateVideoComment(
       id,
-      Number(userId),
+      userId,
       description,
       mediasToRemove,
       files
@@ -79,13 +79,10 @@ export const deleteVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
-    const result = await videoCommentByIdService.deleteVideoComment(
-      id,
-      Number(userId)
-    );
+    const result = await videoCommentByIdService.deleteVideoComment(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {
@@ -107,17 +104,14 @@ export const likeVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const result = await videoCommentByIdService.likeVideoComment(
-      id,
-      Number(userId)
-    );
+    const result = await videoCommentByIdService.likeVideoComment(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {
@@ -133,17 +127,14 @@ export const unlikeVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const result = await videoCommentByIdService.unlikeVideoComment(
-      id,
-      Number(userId)
-    );
+    const result = await videoCommentByIdService.unlikeVideoComment(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {

@@ -120,6 +120,7 @@ export const updateVideo = async (
   userId: number,
   payload: UpdateVideoPayload
 ) => {
+  let gotToStep = [];
   const {
     title,
     description,
@@ -134,6 +135,8 @@ export const updateVideo = async (
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
     .limit(1);
 
+  gotToStep.push("getting video ");
+
   if (!video) {
     throw new Error("Video not found");
   }
@@ -145,6 +148,7 @@ export const updateVideo = async (
   };
 
   if (videoKey) {
+    gotToStep.push("deleting old video ");
     try {
       if (video.videoUrlForDeletion) {
         await deleteFromCloudflare("komplex-video", video.videoUrlForDeletion);
@@ -155,6 +159,7 @@ export const updateVideo = async (
   }
 
   if (thumbnailKey) {
+    gotToStep.push("deleting old thumbnail ");
     try {
       if (video.thumbnailUrlForDeletion) {
         await deleteFromCloudflare(
@@ -174,86 +179,117 @@ export const updateVideo = async (
 
   // If questions are provided, update exercise/questions/choices
   if (Array.isArray(questionsPayload) && questionsPayload.length > 0) {
+    gotToStep.push("getting exercise ");
     const [exercise] = await db
       .select()
       .from(exercises)
       .where(eq(exercises.videoId, Number(id)))
       .limit(1);
 
-    if (exercise) {
-      await db
-        .update(exercises)
-        .set({ updatedAt: new Date() })
-        .where(eq(exercises.id, exercise.id));
+    // Ensure exercise exists; create if missing
+    const exerciseIdToUse = async () => {
+      if (exercise) {
+        gotToStep.push("updating exercise ");
+        await db
+          .update(exercises)
+          .set({ updatedAt: new Date() })
+          .where(eq(exercises.id, exercise.id));
+        return exercise.id;
+      }
+      gotToStep.push("creating exercise ");
+      const [createdExercise] = await db
+        .insert(exercises)
+        .values({
+          videoId: Number(id),
+          userId: Number(userId),
+          duration: 0,
+          title: title ?? null,
+          description: description ?? null,
+          subject: null,
+          grade: null as any,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      return createdExercise.id;
+    };
 
-      for (const question of questionsPayload) {
-        let questionIdToUse: number | null = null;
+    const ensuredExerciseId = await exerciseIdToUse();
 
-        if (question.id && !isNaN(Number(question.id))) {
-          const [existingQuestionById] = await db
-            .select()
-            .from(questions)
-            .where(eq(questions.id, Number(question.id)))
-            .limit(1);
+    for (const question of questionsPayload) {
+      let questionIdToUse: number | null = null;
 
-          if (existingQuestionById) {
-            questionIdToUse = existingQuestionById.id;
-            await db
-              .update(questions)
-              .set({ title: question.title, updatedAt: new Date() })
-              .where(eq(questions.id, existingQuestionById.id));
-          }
+      if (question.id && !isNaN(Number(question.id))) {
+        const [existingQuestionById] = await db
+          .select()
+          .from(questions)
+          .where(eq(questions.id, Number(question.id)))
+          .limit(1);
+
+        if (existingQuestionById) {
+          gotToStep.push("updating question because it already exists ");
+          questionIdToUse = existingQuestionById.id;
+          await db
+            .update(questions)
+            .set({ title: question.title, updatedAt: new Date() })
+            .where(eq(questions.id, existingQuestionById.id));
         }
+      }
 
-        if (!questionIdToUse) {
-          const [insertedQuestion] = await db
-            .insert(questions)
-            .values({
-              exerciseId: exercise.id,
-              title: question.title,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning();
-          questionIdToUse = insertedQuestion.id;
-        }
-
-        for (const choice of question.choices) {
-          if (choice.id && !isNaN(Number(choice.id))) {
-            const [existingChoice] = await db
-              .select()
-              .from(choices)
-              .where(eq(choices.id, Number(choice.id)))
-              .limit(1);
-            if (existingChoice) {
-              await db
-                .update(choices)
-                .set({
-                  text: choice.text,
-                  isCorrect: choice.isCorrect,
-                  updatedAt: new Date(),
-                })
-                .where(eq(choices.id, existingChoice.id));
-              continue;
-            }
-          }
-          await db.insert(choices).values({
-            questionId: Number(questionIdToUse),
-            text: choice.text,
-            isCorrect: choice.isCorrect,
+      if (!questionIdToUse) {
+        gotToStep.push("inserting question ");
+        const [insertedQuestion] = await db
+          .insert(questions)
+          .values({
+            exerciseId: ensuredExerciseId,
+            title: question.title,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          })
+          .returning();
+        questionIdToUse = insertedQuestion.id;
+      }
+
+      for (const choice of question.choices) {
+        if (choice.id && !isNaN(Number(choice.id))) {
+          const [existingChoice] = await db
+            .select()
+            .from(choices)
+            .where(eq(choices.id, Number(choice.id)))
+            .limit(1);
+          if (existingChoice) {
+            gotToStep.push("updating choice because it already exists ");
+            await db
+              .update(choices)
+              .set({
+                text: choice.text,
+                isCorrect: choice.isCorrect,
+                updatedAt: new Date(),
+              })
+              .where(eq(choices.id, existingChoice.id));
+            continue;
+          }
         }
+        gotToStep.push("inserting choice ");
+        await db.insert(choices).values({
+          questionId: Number(questionIdToUse),
+          text: choice.text,
+          isCorrect: choice.isCorrect,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
     }
   }
 
-  return { data: { success: true } };
+  return { data: { success: true, gotToStep } };
 };
 
 export const deleteVideo = async (id: number, userId: number) => {
+  let gotToStep = [];
+
   // Check ownership
+  gotToStep.push("checking ownership ");
   const [doesThisUserOwnThisVideo] = await db
     .select({
       videoUrlForDeletion: videos.videoUrlForDeletion,
@@ -262,9 +298,13 @@ export const deleteVideo = async (id: number, userId: number) => {
     .from(videos)
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))));
 
+  gotToStep.push("checking ownership ");
+
   if (!doesThisUserOwnThisVideo) {
     throw new Error("Video not found or unauthorized");
   }
+
+  gotToStep.push("checking if video has comments ");
 
   const [doesThisVideoHasComments] = await db
     .select()
@@ -272,9 +312,14 @@ export const deleteVideo = async (id: number, userId: number) => {
     .where(eq(videoComments.videoId, Number(id)))
     .limit(1);
 
+  gotToStep.push("checking if video has comments ");
+
   let deleteComments = null;
+  console.log("ABOUT TO CHECK IF VIDEO HAS COMMENTS");
   if (doesThisVideoHasComments) {
+    console.log("VIDEO HAS COMMENTS");
     // If the video has comments, we need to delete them as well
+    gotToStep.push("deleting comments ");
     deleteComments = await deleteVideoCommentInternal(
       Number(userId),
       null,
@@ -283,30 +328,35 @@ export const deleteVideo = async (id: number, userId: number) => {
   }
 
   // Delete likes
+  gotToStep.push("deleting likes ");
   const deletedLikes = await db
     .delete(videoLikes)
     .where(eq(videoLikes.videoId, Number(id)))
     .returning();
 
   // Delete saves
+  gotToStep.push("deleting saves ");
   const deletedSaves = await db
     .delete(userSavedVideos)
     .where(eq(userSavedVideos.videoId, Number(id)))
     .returning();
 
   // get exercies for this video
+  gotToStep.push("getting exercise ");
   const exerciseId = await db
     .select()
     .from(exercises)
     .where(eq(exercises.videoId, Number(id)));
   if (exerciseId && exerciseId.length > 0) {
     // get quesitons for this video
+    gotToStep.push("getting questions ");
     const questionIds = await db
       .select()
       .from(questions)
       .where(eq(questions.exerciseId, Number(exerciseId[0].id)));
 
     // delete choices for this video
+    gotToStep.push("deleting choices ");
     for (const questionId of questionIds) {
       // delete choices for this question
       await db
@@ -316,12 +366,14 @@ export const deleteVideo = async (id: number, userId: number) => {
     }
 
     // delete questions for this video
+    gotToStep.push("deleting questions ");
     await db
       .delete(questions)
       .where(eq(questions.exerciseId, Number(exerciseId[0].id)))
       .returning();
 
     // delete exercise for this video
+    gotToStep.push("deleting exercise ");
     const deletedExercise = await db
       .delete(exercises)
       .where(eq(exercises.videoId, Number(id)))
@@ -330,6 +382,7 @@ export const deleteVideo = async (id: number, userId: number) => {
 
   // Delete from Cloudflare
   if (doesThisUserOwnThisVideo.videoUrlForDeletion) {
+    gotToStep.push("deleting video from Cloudflare ");
     try {
       await deleteFromCloudflare(
         "komplex-video",
@@ -341,6 +394,7 @@ export const deleteVideo = async (id: number, userId: number) => {
   }
 
   if (doesThisUserOwnThisVideo.thumbnailUrlForDeletion) {
+    gotToStep.push("deleting thumbnail from Cloudflare ");
     try {
       await deleteFromCloudflare(
         "komplex-image",
@@ -351,17 +405,19 @@ export const deleteVideo = async (id: number, userId: number) => {
     }
   }
 
+  gotToStep.push("deleting user video history ");
   await db
     .delete(userVideoHistory)
     .where(eq(userVideoHistory.videoId, Number(id)));
 
   // Delete video record
+  gotToStep.push("deleting video record ");
   const deletedVideo = await db
     .delete(videos)
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
     .returning();
 
-  return { data: deletedVideo };
+  return { data: deletedVideo, gotToStep };
 };
 
 // Note: exercise update is now embedded in updateVideo when payload.questions is provided.

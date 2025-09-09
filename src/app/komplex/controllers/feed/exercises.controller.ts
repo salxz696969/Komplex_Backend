@@ -8,7 +8,7 @@ export const getExercisesController = async (
 ) => {
   try {
     const { grade } = req.query;
-    const userId = 1; // TO CHANGE
+    const userId = req.user.userId;
     const result = await exerciseService.getExercises(grade as string, userId);
     return res.status(200).json(result.data);
   } catch (error) {
@@ -25,6 +25,7 @@ export const getExerciseController = async (
 ) => {
   try {
     const { id } = req.params;
+    // const userId = req.user.userId;
     const result = await exerciseService.getExercise(id);
     return res.status(200).json(result.data);
   } catch (error) {

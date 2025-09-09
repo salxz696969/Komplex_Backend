@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { verifyFirebaseToken } from "./../../../../middleware/auth.js";
 import {
   postVideoCommentController,
   deleteVideoCommentController,
@@ -8,9 +9,25 @@ import {
 
 const router = Router();
 
-router.post("/", postVideoCommentController as any);
-router.delete("/:id", deleteVideoCommentController as any);
-router.patch("/:id/like", likeVideoCommentController as any);
-router.patch("/:id/unlike", unlikeVideoCommentController as any);
+router.post(
+  "/:id",
+  verifyFirebaseToken as any,
+  postVideoCommentController as any
+);
+router.delete(
+  "/:id",
+  verifyFirebaseToken as any,
+  deleteVideoCommentController as any
+);
+router.patch(
+  "/:id/like",
+  verifyFirebaseToken as any,
+  likeVideoCommentController as any
+);
+router.patch(
+  "/:id/unlike",
+  verifyFirebaseToken as any,
+  unlikeVideoCommentController as any
+);
 
 export default router;

@@ -8,17 +8,17 @@ export const getAllVideoRepliesForACommentController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { page } = req.query;
     const pageNumber = Number(page) || 1;
 
     const result = await videoReplyService.getAllVideoRepliesForAComment(
       id,
-      Number(userId),
+      userId,
       pageNumber
     );
 
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,

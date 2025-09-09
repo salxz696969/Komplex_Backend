@@ -1,3 +1,4 @@
+import { verifyFirebaseToken } from "./../../../../middleware/auth.js";
 import { Router } from "express";
 import {
   getExercisesController,
@@ -9,8 +10,8 @@ import {
 
 const router = Router();
 
-router.get("/", getExercisesController as any);
-router.get("/:id", getExerciseController as any);
+router.get("/", verifyFirebaseToken as any, getExercisesController as any);
+router.get("/:id", verifyFirebaseToken as any, getExerciseController as any);
 
 // TODO: Future features
 // router.get("/:id/stats", getExerciseStats); // Exercise statistics

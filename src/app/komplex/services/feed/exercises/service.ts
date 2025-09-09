@@ -12,6 +12,7 @@ import { redis } from "@/db/redis/redisConfig.js";
 export const getExercises = async (grade: string, userId: number) => {
   try {
     const cacheKey = `exercises:${grade}`;
+    await redis.del(cacheKey);
     let userExerciseWithProgress: any[] = [];
     const redisData = await redis.get(cacheKey);
 
@@ -188,4 +189,3 @@ export const getExercise = async (id: string) => {
     throw new Error((error as Error).message);
   }
 };
-

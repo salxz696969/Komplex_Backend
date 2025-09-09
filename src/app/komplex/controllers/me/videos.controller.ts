@@ -154,19 +154,19 @@ export const deleteVideoController = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
+  let result;
   try {
     const userId = req.user.userId;
     const { id } = req.params;
-    const result = await videoByIdService.deleteVideo(
-      Number(id),
-      Number(userId)
-    );
-    return res.status(200).json(result.data);
+    result = await videoByIdService.deleteVideo(Number(id), Number(userId));
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "Video not found or unauthorized") {
-      return res
-        .status(404)
-        .json({ success: false, message: "Video not found or unauthorized" });
+      return res.status(404).json({
+        success: false,
+        message: "Video not found or unauthorized",
+        result: result?.gotToStep,
+      });
     }
     return res.status(500).json({
       success: false,

@@ -30,7 +30,9 @@ export const deleteVideoCommentInternal = async (
       .limit(1);
 
     let deleteReply = null;
+    console.log("ABOUT TO CHECK IF COMMENT HAS REPLY");
     if (doesThisCommentHasReply.length > 0) {
+      console.log("COMMENT HAS REPLY");
       deleteReply = await deleteVideoReplyInternal(
         Number(userId),
         null,
@@ -92,11 +94,16 @@ export const deleteVideoCommentInternal = async (
 
   // Delete all comments for a videoId
   if (videoId && commentId === null) {
+    console.log("ABOUT TO GET COMMENT IDS BY VIDEO ID");
     const getCommentIdsByVideoId = await db
       .select({ id: videoComments.id })
       .from(videoComments)
       .where(eq(videoComments.videoId, videoId));
     const commentIds = getCommentIdsByVideoId.map((c) => c.id);
+
+    for (const commentId of commentIds) {
+      await deleteVideoReplyInternal(Number(userId), null, commentId);
+    }
 
     const mediaToDelete = await db
       .select({ urlForDeletion: videoCommentMedias.urlForDeletion })

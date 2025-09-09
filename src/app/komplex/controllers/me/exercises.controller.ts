@@ -57,7 +57,7 @@ export const getExerciseByIdController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await exerciseByIdService.getExerciseById(
       id,
@@ -88,7 +88,7 @@ export const submitExerciseController = async (
       answers,
       score,
       timeTaken,
-      Number(userId),
+      Number(userId)
     );
     return res.status(200).json(result.data);
   } catch (error) {

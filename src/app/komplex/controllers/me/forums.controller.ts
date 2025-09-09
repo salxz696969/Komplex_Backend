@@ -8,7 +8,7 @@ export const getAllMyForumsController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await forumService.getAllMyForums(req.query, Number(userId));
     return res.status(200).json(result);
   } catch (error) {
@@ -24,7 +24,7 @@ export const postForumController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await forumService.postForum(
       req.body,
       req.files,
@@ -49,7 +49,7 @@ export const likeForumController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await forumByIdService.likeForum(id, Number(userId));
     return res.status(200).json(result);
   } catch (error) {
@@ -69,7 +69,7 @@ export const unlikeForumController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user.userId;
     const result = await forumByIdService.unlikeForum(id, Number(userId));
     return res.status(200).json(result);
   } catch (error) {
@@ -88,7 +88,7 @@ export const updateForumController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumByIdService.updateForum(
       id,
@@ -120,7 +120,7 @@ export const deleteForumController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const userId = req.user.userId;
     const { id } = req.params;
     const result = await forumByIdService.deleteForum(id, Number(userId));
     return res.status(200).json(result);

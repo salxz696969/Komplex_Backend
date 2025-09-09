@@ -8,14 +8,14 @@ export const postVideoReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { description } = req.body;
     const { id } = req.params;
     const files = req.files;
 
     const result = await videoReplyService.postVideoReply(
       id,
-      Number(userId),
+      userId,
       description,
       files
     );
@@ -40,14 +40,14 @@ export const updateVideoReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
     const { description, videosToRemove } = req.body;
     const files = req.files;
 
     const result = await videoReplyByIdService.updateVideoReply(
       id,
-      Number(userId),
+      userId,
       description,
       videosToRemove,
       files
@@ -79,13 +79,10 @@ export const deleteVideoReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
-    const result = await videoReplyByIdService.deleteVideoReply(
-      id,
-      Number(userId)
-    );
+    const result = await videoReplyByIdService.deleteVideoReply(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {
@@ -107,17 +104,14 @@ export const likeVideoReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const result = await videoReplyByIdService.likeVideoReply(
-      id,
-      Number(userId)
-    );
+    const result = await videoReplyByIdService.likeVideoReply(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {
@@ -133,17 +127,14 @@ export const unlikeVideoReplyController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const userId = req.user?.userId;
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const result = await videoReplyByIdService.unlikeVideoReply(
-      id,
-      Number(userId)
-    );
+    const result = await videoReplyByIdService.unlikeVideoReply(id, userId);
 
     return res.status(200).json(result.data);
   } catch (error) {

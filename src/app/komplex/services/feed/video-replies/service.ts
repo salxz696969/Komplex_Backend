@@ -19,7 +19,7 @@ export const getAllVideoRepliesForAComment = async (
 
   let cachedReplies: any[] = [];
   if (cached) {
-    cachedReplies = JSON.parse(cached).repliesWithMedia;
+    cachedReplies = JSON.parse(cached);
   }
 
   // Fetch dynamic fields fresh
@@ -34,7 +34,7 @@ export const getAllVideoRepliesForAComment = async (
       videoReplyLike,
       and(
         eq(videoReplyLike.videoReplyId, videoReplies.id),
-        eq(videoReplyLike.userId, Number(userId))
+        eq(videoReplyLike.userId, userId)
       )
     )
     .where(eq(videoReplies.videoCommentId, Number(id)))
@@ -112,11 +112,7 @@ export const getAllVideoRepliesForAComment = async (
       }, {} as { [key: number]: any })
     );
 
-    await redis.set(
-      cacheKey,
-      JSON.stringify({ repliesWithMedia: cachedReplies }),
-      { EX: 60 }
-    );
+    await redis.set(cacheKey, JSON.stringify(cachedReplies), { EX: 60 });
   }
 
   const repliesWithMedia = cachedReplies.map((r) => {
@@ -129,41 +125,7 @@ export const getAllVideoRepliesForAComment = async (
   });
 
   return {
-    data: {
-      repliesWithMedia,
-      hasMore: repliesWithMedia.length === limit,
-    },
-  };
-};
-
-export const likeVideoReply = async (id: string, userId: number) => {
-  const like = await db
-    .insert(videoReplyLike)
-    .values({
-      userId: Number(userId),
-      videoReplyId: Number(id),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  return {
-    data: { like },
-  };
-};
-
-export const unlikeVideoReply = async (id: string, userId: number) => {
-  const unlike = await db
-    .delete(videoReplyLike)
-    .where(
-      and(
-        eq(videoReplyLike.userId, Number(userId)),
-        eq(videoReplyLike.videoReplyId, Number(id))
-      )
-    )
-    .returning();
-
-  return {
-    data: { unlike },
+    data: repliesWithMedia,
+    hasMore: repliesWithMedia.length === limit,
   };
 };
