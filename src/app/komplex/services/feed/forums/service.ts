@@ -1,4 +1,4 @@
-import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { forums, forumMedias, users, forumLikes, followers } from "@/db/schema.js";
@@ -40,7 +40,7 @@ export const getAllForums = async (type?: string, topic?: string, page?: string,
 		const forumIds = await db
 			.select({ id: forums.id })
 			.from(forums)
-			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.where(and(conditions.length > 0 ? and(...conditions) : undefined, ne(forums.userId, Number(userId))))
 			.orderBy(
 				desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
 				desc(forums.viewCount),
@@ -86,6 +86,7 @@ export const getAllForums = async (type?: string, topic?: string, page?: string,
 					mediaUrl: forumMedias.url,
 					mediaType: forumMedias.mediaType,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 				})
 				.from(forums)
 				.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
@@ -105,6 +106,7 @@ export const getAllForums = async (type?: string, topic?: string, page?: string,
 						createdAt: forum.createdAt,
 						updatedAt: forum.updatedAt,
 						username: forum.username,
+						profileImage: forum.profileImage,
 						media: [] as { url: string; type: string }[],
 					};
 					forumMap.set(forum.id, formatted);

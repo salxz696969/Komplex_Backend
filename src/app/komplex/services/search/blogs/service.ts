@@ -41,6 +41,7 @@ export const searchBlogsService = async (query: string, limit: number, offset: n
 					mediaUrl: blogMedia.url,
 					mediaType: blogMedia.mediaType,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 				})
 				.from(blogs)
 				.leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
@@ -60,6 +61,7 @@ export const searchBlogsService = async (query: string, limit: number, offset: n
 						createdAt: blog.createdAt,
 						updatedAt: blog.updatedAt,
 						username: blog.username,
+						profileImage: blog.profileImage,
 						media: [] as { url: string; type: string }[],
 					};
 					blogMap.set(blog.id, formatted);

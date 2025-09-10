@@ -42,6 +42,7 @@ export const getAllMyVideos = async (query: any, userId: number) => {
 			createdAt: videos.createdAt,
 			updatedAt: videos.updatedAt,
 			username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+			profileImage: users.profileImage,
 			isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
 			isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
 			likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
@@ -149,13 +150,13 @@ export const postVideo = async (body: any, userId: number) => {
 	const redisKey = `videos:${newVideo[0].id}`;
 
 	await redis.set(redisKey, JSON.stringify(videoWithMedia), { EX: 600 });
-	const meilisearchData={
+	const meilisearchData = {
 		id: videoWithMedia.id,
 		title: videoWithMedia.title,
 		description: videoWithMedia.description,
 		type: videoWithMedia.type,
 		topic: videoWithMedia.topic,
-	}
+	};
 	await meilisearch.index("videos").addDocuments([meilisearchData]);
 
 	// Create exercise for video quiz

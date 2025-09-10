@@ -13,30 +13,27 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 	const cacheKey = `videoReplies:comment:${id}:page:${pageNumber}`;
 	const cached = await redis.get(cacheKey);
 
-  let cachedReplies: any[] = [];
-  if (cached) {
-    cachedReplies = JSON.parse(cached);
-  }
+	let cachedReplies: any[] = [];
+	if (cached) {
+		cachedReplies = JSON.parse(cached);
+	}
 
-  // Fetch dynamic fields fresh
-  const dynamicData = await db
-    .select({
-      id: videoReplies.id,
-      likeCount: sql`COUNT(DISTINCT ${videoReplyLike.videoReplyId})`,
-      isLike: sql`CASE WHEN ${videoReplyLike.videoReplyId} IS NOT NULL THEN true ELSE false END`,
-    })
-    .from(videoReplies)
-    .leftJoin(
-      videoReplyLike,
-      and(
-        eq(videoReplyLike.videoReplyId, videoReplies.id),
-        eq(videoReplyLike.userId, userId)
-      )
-    )
-    .where(eq(videoReplies.videoCommentId, Number(id)))
-    .groupBy(videoReplies.id, videoReplyLike.videoReplyId)
-    .offset(offset)
-    .limit(limit);
+	// Fetch dynamic fields fresh
+	const dynamicData = await db
+		.select({
+			id: videoReplies.id,
+			likeCount: sql`COUNT(DISTINCT ${videoReplyLike.videoReplyId})`,
+			isLike: sql`CASE WHEN ${videoReplyLike.videoReplyId} IS NOT NULL THEN true ELSE false END`,
+		})
+		.from(videoReplies)
+		.leftJoin(
+			videoReplyLike,
+			and(eq(videoReplyLike.videoReplyId, videoReplies.id), eq(videoReplyLike.userId, userId))
+		)
+		.where(eq(videoReplies.videoCommentId, Number(id)))
+		.groupBy(videoReplies.id, videoReplyLike.videoReplyId)
+		.offset(offset)
+		.limit(limit);
 
 	if (!cachedReplies.length) {
 		const replyRows = await db
@@ -50,6 +47,7 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 				mediaUrl: videoReplyMedias.url,
 				mediaType: videoReplyMedias.mediaType,
 				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				profileImage: users.profileImage,
 			})
 			.from(videoReplies)
 			.leftJoin(videoReplyMedias, eq(videoReplies.id, videoReplyMedias.videoReplyId))
@@ -88,6 +86,7 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 						updatedAt: reply.updatedAt,
 						media: [] as { url: string; type: string }[],
 						username: reply.username,
+						profileImage: reply.profileImage,
 					};
 				}
 				if (reply.mediaUrl) {
@@ -100,8 +99,8 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 			}, {} as { [key: number]: any })
 		);
 
-    await redis.set(cacheKey, JSON.stringify(cachedReplies), { EX: 60 });
-  }
+		await redis.set(cacheKey, JSON.stringify(cachedReplies), { EX: 60 });
+	}
 
 	const repliesWithMedia = cachedReplies.map((r) => {
 		const dynamic = dynamicData.find((d) => d.id === r.id);
@@ -112,8 +111,8 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 		};
 	});
 
-  return {
-    data: repliesWithMedia,
-    hasMore: repliesWithMedia.length === limit,
-  };
+	return {
+		data: repliesWithMedia,
+		hasMore: repliesWithMedia.length === limit,
+	};
 };

@@ -7,7 +7,7 @@ export const createFeedbackController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { content, type } = req.body;
     const result = await createFeedback(content, type, Number(userId));
     return res.status(201).json(result.data);

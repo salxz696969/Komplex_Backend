@@ -5,7 +5,7 @@ import * as videoByIdService from "@/app/komplex/services/feed/videos/[id]/servi
 
 export const getAllVideosController = async (req: AuthenticatedRequest, res: Response) => {
 	try {
-		const { userId } = req.user ?? { userId: 1 };
+		const { userId } = req.user;
 		const { type, topic, page } = req.query;
 		const result = await videoService.getAllVideos(type as string, topic as string, page as string, Number(userId));
 		return res.status(200).json(result);
@@ -16,7 +16,7 @@ export const getAllVideosController = async (req: AuthenticatedRequest, res: Res
 
 export const getVideoByIdController = async (req: AuthenticatedRequest, res: Response) => {
 	try {
-		const { userId } = req.user ?? { userId: 1 };
+		const { userId } = req.user;
 		const videoId = Number(req.params.id);
 		const result = await videoByIdService.getVideoById(videoId, Number(userId));
 		return res.status(200).json(result);

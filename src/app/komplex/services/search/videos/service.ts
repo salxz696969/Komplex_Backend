@@ -40,6 +40,7 @@ export const searchVideosService = async (query: string, limit: number, offset: 
 					createdAt: videos.createdAt,
 					updatedAt: videos.updatedAt,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 					viewCount: videos.viewCount,
 				})
 				.from(videos)
@@ -60,6 +61,7 @@ export const searchVideosService = async (query: string, limit: number, offset: 
 					createdAt: video.createdAt,
 					updatedAt: video.updatedAt,
 					username: video.username,
+					profileImage: video.profileImage,
 					viewCount: video.viewCount,
 				};
 				missedVideos.push(formatted);

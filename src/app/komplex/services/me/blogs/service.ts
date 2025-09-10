@@ -4,6 +4,7 @@ import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, users } from "@/db/schema.js";
 import { uploadImageToCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
 import { meilisearch } from "@/meilisearch/meilisearchConfig.js";
+import { profile } from "console";
 
 export const getAllMyBlogs = async (page: string, userId: number, type?: string, topic?: string) => {
 	const conditions = [];
@@ -30,6 +31,7 @@ export const getAllMyBlogs = async (page: string, userId: number, type?: string,
 			createdAt: blogs.createdAt,
 			userFirstName: users.firstName,
 			userLastName: users.lastName,
+			profileImage: users.profileImage,
 		})
 		.from(blogs)
 		.leftJoin(users, eq(blogs.userId, users.id))
@@ -51,6 +53,7 @@ export const getAllMyBlogs = async (page: string, userId: number, type?: string,
 				viewCount: blog.viewCount,
 				createdAt: blog.createdAt,
 				username: `${blog.userFirstName} ${blog.userLastName}`,
+				profileImage: blog.profileImage,
 				media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
 			};
 		})

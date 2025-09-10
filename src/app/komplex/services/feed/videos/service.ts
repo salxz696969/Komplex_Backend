@@ -1,4 +1,4 @@
-import { and, eq, sql, desc, inArray } from "drizzle-orm";
+import { and, eq, sql, desc, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { videos, users, userSavedVideos, videoLikes, followers } from "@/db/schema.js";
@@ -41,7 +41,7 @@ export const getAllVideos = async (type?: string, topic?: string, page?: string,
 		const videoIds = await db
 			.select({ id: videos.id })
 			.from(videos)
-			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.where(and(conditions.length > 0 ? and(...conditions) : undefined, ne(videos.userId, Number(userId))))
 			.orderBy(
 				desc(sql`CASE WHEN DATE(${videos.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
 				desc(videos.viewCount),
@@ -88,6 +88,7 @@ export const getAllVideos = async (type?: string, topic?: string, page?: string,
 					createdAt: videos.createdAt,
 					updatedAt: videos.updatedAt,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 					viewCount: videos.viewCount,
 				})
 				.from(videos)
@@ -108,6 +109,7 @@ export const getAllVideos = async (type?: string, topic?: string, page?: string,
 					createdAt: video.createdAt,
 					updatedAt: video.updatedAt,
 					username: video.username,
+					profileImage: video.profileImage,
 					viewCount: video.viewCount,
 				};
 				missedVideos.push(formatted);

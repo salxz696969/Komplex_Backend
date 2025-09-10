@@ -25,7 +25,7 @@ export const getAllCommentsForAForum = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
 
     const comments = await db
       .select({
@@ -98,7 +98,7 @@ export const postForumComment = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { description } = req.body;
     const { id } = req.params;
 
@@ -168,7 +168,7 @@ export const likeForumComment = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -199,7 +199,7 @@ export const unlikeForumComment = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -229,7 +229,7 @@ export const updateForumComment = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user;
     const { id } = req.params;
     const { description, photosToRemove } = req.body;
 
@@ -350,7 +350,7 @@ export const deleteForumComment = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user ;
     const { id } = req.params; // id = commentId
 
     const doesUserOwnThisComment = await db

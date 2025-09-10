@@ -8,7 +8,7 @@ export const updateForumCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { id } = req.params;
     const result = await forumCommentByIdService.updateForumComment(
       id,
@@ -40,7 +40,7 @@ export const deleteForumCommentController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { id } = req.params;
     const result = await forumCommentByIdService.deleteForumComment(
       id,

@@ -41,6 +41,7 @@ export const searchForumsService = async (query: string, limit: number, offset: 
 					mediaUrl: forumMedias.url,
 					mediaType: forumMedias.mediaType,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 				})
 				.from(forums)
 				.leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
@@ -60,6 +61,7 @@ export const searchForumsService = async (query: string, limit: number, offset: 
 						createdAt: forum.createdAt,
 						updatedAt: forum.updatedAt,
 						username: forum.username,
+						profileImage: forum.profileImage,
 						media: [] as { url: string; type: string }[],
 					};
 					forumMap.set(forum.id, formatted);

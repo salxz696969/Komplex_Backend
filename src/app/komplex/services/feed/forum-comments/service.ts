@@ -47,6 +47,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 				mediaUrl: forumCommentMedias.url,
 				mediaType: forumCommentMedias.mediaType,
 				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				profileImage: users.profileImage,
 			})
 			.from(forumComments)
 			.leftJoin(forumCommentMedias, eq(forumComments.id, forumCommentMedias.forumCommentId))
@@ -85,6 +86,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 						updatedAt: comment.updatedAt,
 						media: [] as { url: string; type: string }[],
 						username: comment.username,
+						profileImage: comment.profileImage,
 					};
 				}
 				if (comment.mediaUrl) {
