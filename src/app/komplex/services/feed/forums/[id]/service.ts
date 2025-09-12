@@ -76,7 +76,7 @@ export const getForumById = async (id: string, userId: number) => {
     .select({
       viewCount: forums.viewCount,
       likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-      isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+      isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
     })
     .from(forums)
     .leftJoin(
@@ -93,7 +93,7 @@ export const getForumById = async (id: string, userId: number) => {
     ...forumData,
     viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
     likeCount: Number(dynamic[0]?.likeCount) || 0,
-    isLike: !!dynamic[0]?.isLike,
+    isLiked: !!dynamic[0]?.isLiked,
   };
 
   return { data: forumWithMedia };
