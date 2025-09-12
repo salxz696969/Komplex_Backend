@@ -34,6 +34,8 @@ export const getAllMyVideos = async (query: any, userId: number) => {
       id: videos.id,
       userId: videos.userId,
       title: videos.title,
+      topic: videos.topic,
+      type: videos.type,
       description: videos.description,
       duration: videos.duration,
       videoUrl: videos.videoUrl,

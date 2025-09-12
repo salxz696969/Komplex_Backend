@@ -1,7 +1,7 @@
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { blogs, blogMedia, users } from "@/db/schema.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { blogs, blogMedia, users, followers } from "@/db/schema.js";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 export const getUserBlogs = async (userId: number, page?: string, topic?: string, type?: string) => {
 	try {
@@ -13,7 +13,11 @@ export const getUserBlogs = async (userId: number, page?: string, topic?: string
 		const cachedBlogs = await redis.get(cacheKey);
 		const parsedCached = cachedBlogs ? JSON.parse(cachedBlogs) : null;
 		if (parsedCached) {
-			return parsedCached;
+			const isFollowing = await db
+				.select()
+				.from(followers)
+				.where(and(eq(followers.followedId, Number(parsedCached.userId)), eq(followers.userId, userId)));
+			return { parsedCached, isFollowing: isFollowing.length > 0, hasMore: parsedCached.length === limit };
 		}
 
 		const userBlogs = await db
@@ -70,7 +74,7 @@ export const getUserBlogs = async (userId: number, page?: string, topic?: string
 		const blogsWithMedia = Array.from(blogMap.values());
 
 		// Cache for 5 minutes
-		await redis.set(cacheKey, JSON.stringify({ data: blogsWithMedia, hasMore: blogsWithMedia.length === limit }), {
+		await redis.set(cacheKey, JSON.stringify({ data: blogsWithMedia }), {
 			EX: 300,
 		});
 

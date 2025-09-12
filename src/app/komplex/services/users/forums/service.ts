@@ -1,7 +1,7 @@
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { forums, forumMedias, users } from "@/db/schema.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { forums, forumMedias, users, followers } from "@/db/schema.js";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 export const getUserForums = async (userId: number, page?: string, type?: string, topic?: string) => {
 	try {
@@ -12,7 +12,11 @@ export const getUserForums = async (userId: number, page?: string, type?: string
 		const cacheData = await redis.get(cacheKey);
 		const parse = cacheData ? JSON.parse(cacheData) : null;
 		if (parse) {
-			return parse;
+			const isFollowing = await db
+				.select()
+				.from(followers)
+				.where(and(eq(followers.followedId, Number(parse.userId)), eq(followers.userId, userId)));
+			return { parsedCached: parse, isFollowing: isFollowing.length > 0, hasMore: parse.length === limit };
 		}
 
 		const userForums = await db
@@ -69,11 +73,7 @@ export const getUserForums = async (userId: number, page?: string, type?: string
 		const forumsWithMedia = Array.from(forumMap.values());
 
 		// Cache for 5 minutes
-		await redis.set(
-			cacheKey,
-			JSON.stringify({ data: forumsWithMedia, hasMore: forumsWithMedia.length === limit }),
-			{ EX: 300 }
-		);
+		await redis.set(cacheKey, JSON.stringify({ data: forumsWithMedia }), { EX: 300 });
 
 		return { data: forumsWithMedia, hasMore: forumsWithMedia.length === limit };
 	} catch (error) {

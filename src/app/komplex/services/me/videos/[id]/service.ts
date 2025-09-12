@@ -181,6 +181,8 @@ export const updateVideo = async (
       id: videos.id,
       userId: videos.userId,
       title: videos.title,
+      topic: videos.topic,
+      type: videos.type,
       description: videos.description,
       duration: videos.duration,
       videoUrl: videos.videoUrl,

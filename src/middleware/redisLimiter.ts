@@ -309,3 +309,12 @@ export const searchRateLimiter = createRateLimiterMiddleware(
     keyPrefix: "search",
   })
 );
+
+export const followLimiter = createRateLimiterMiddleware(
+  createLimiter({
+    points: 50,
+    duration: 60,
+    blockDuration: 60,
+    keyPrefix: "follow",
+  })
+);
