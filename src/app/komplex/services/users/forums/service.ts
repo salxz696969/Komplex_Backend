@@ -12,11 +12,7 @@ export const getUserForums = async (userId: number, page?: string, type?: string
 		const cacheData = await redis.get(cacheKey);
 		const parse = cacheData ? JSON.parse(cacheData) : null;
 		if (parse) {
-			const isFollowing = await db
-				.select()
-				.from(followers)
-				.where(and(eq(followers.followedId, Number(parse.userId)), eq(followers.userId, userId)));
-			return { parsedCached: parse, isFollowing: isFollowing.length > 0, hasMore: parse.length === limit };
+			return { data: parse, hasMore: parse.length === limit };
 		}
 
 		const userForums = await db
@@ -73,7 +69,7 @@ export const getUserForums = async (userId: number, page?: string, type?: string
 		const forumsWithMedia = Array.from(forumMap.values());
 
 		// Cache for 5 minutes
-		await redis.set(cacheKey, JSON.stringify({ data: forumsWithMedia }), { EX: 300 });
+		await redis.set(cacheKey, JSON.stringify(forumsWithMedia), { EX: 300 });
 
 		return { data: forumsWithMedia, hasMore: forumsWithMedia.length === limit };
 	} catch (error) {

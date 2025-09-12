@@ -21,20 +21,7 @@ export const getFollowersService = async (userId: number, page?: number, limit?:
 	return { data: followersList, hasMore: followersList.length === (limit || 20) };
 };
 
-export const followUserService = async (userId: number, followedId: number) => {
-	await db
-		.insert(followers)
-		.values({
-			userId: Number(userId),
-			followedId: Number(followedId),
-		})
-		.returning();
-	const myFollowingKeys: string[] = await redis.keys(`userFollowing:${userId}:page:*`);
-	if (myFollowingKeys.length > 0) {
-		await redis.del(myFollowingKeys);
-	}
-	return { message: "Successfully followed the user." };
-};
+
 
 export const getFollowingService = async (userId: number, page?: number, limit?: number, offset?: number) => {
 	const cacheKey = `userFollowing:userId:${userId}:page:${page}`;

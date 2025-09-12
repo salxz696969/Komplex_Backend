@@ -11,11 +11,18 @@ import { getSmallContentRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
-router.get("/",  getSmallContentRateLimiter, getAllBlogsController as any);
-router.get("/:id", verifyFirebaseToken as any, getSmallContentRateLimiter,getBlogByIdController as any);
+router.get(
+  "/",
+  verifyFirebaseToken as any,
+  getSmallContentRateLimiter,
+  getAllBlogsController as any
+);
 
-// TODO: Future interaction endpoints
-// router.get("/:id/likes", getBlogLikes); // Who liked this blog
-// router.get("/:id/comments", getBlogComments); // Comments on this blog
+router.get(
+  "/:id",
+  verifyFirebaseToken as any,
+  getSmallContentRateLimiter,
+  getBlogByIdController as any
+);
 
 export default router;

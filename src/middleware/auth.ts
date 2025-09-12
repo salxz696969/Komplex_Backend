@@ -10,22 +10,24 @@ export const verifyFirebaseToken = async (
   res: Response,
   next: NextFunction
 ) => {
-  // verify and attach user to request
-  // return res.status(200).json(req.headers.authorization);
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) {
     return res.status(401).json({ message: "Missing token" });
   }
+
   try {
     const decoded = await admin.auth().verifyIdToken(token);
+
     // exchange uid for user id
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.uid, decoded.uid));
+
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
+
     req.user = { userId: user.id };
     next();
   } catch (error) {

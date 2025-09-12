@@ -1,7 +1,7 @@
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { videos, users, followers } from "@/db/schema.js";
-import { and, desc, eq } from "drizzle-orm";
+import { videos, users } from "@/db/schema.js";
+import { desc, eq } from "drizzle-orm";
 
 export const getUserVideos = async (userId: number, page?: string, topic?: string, type?: string) => {
 	try {
@@ -13,11 +13,7 @@ export const getUserVideos = async (userId: number, page?: string, topic?: strin
 		const cachedVideos = await redis.get(cacheKey);
 		const parsedData = cachedVideos ? JSON.parse(cachedVideos) : null;
 		if (parsedData) {
-			const isFollowing = await db
-				.select()
-				.from(followers)
-				.where(and(eq(followers.followedId, Number(parsedData.userId)), eq(followers.userId, userId)));
-			return { parsedData, isFollowing: isFollowing.length > 0, hasMore: parsedData.length === limit };
+			return { data: parsedData, hasMore: parsedData.length === limit };
 		}
 
 		const userVideos = await db
@@ -45,7 +41,7 @@ export const getUserVideos = async (userId: number, page?: string, topic?: strin
 			.offset(offset);
 
 		// Cache for 5 minutes
-		await redis.set(cacheKey, JSON.stringify({ data: userVideos }), {
+		await redis.set(cacheKey, JSON.stringify(userVideos), {
 			EX: 300,
 		});
 
