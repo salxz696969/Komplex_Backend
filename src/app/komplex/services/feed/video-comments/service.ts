@@ -47,6 +47,7 @@ export const getAllVideoCommentsForAVideo = async (id: string, userId: number, p
 				mediaUrl: videoCommentMedias.url,
 				mediaType: videoCommentMedias.mediaType,
 				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				profileImage: users.profileImage,
 			})
 			.from(videoComments)
 			.leftJoin(videoCommentMedias, eq(videoComments.id, videoCommentMedias.videoCommentId))
@@ -85,6 +86,7 @@ export const getAllVideoCommentsForAVideo = async (id: string, userId: number, p
 						updatedAt: comment.updatedAt,
 						media: [] as { url: string; type: string }[],
 						username: comment.username,
+						profileImage: comment.profileImage,
 					};
 				}
 				if (comment.mediaUrl) {

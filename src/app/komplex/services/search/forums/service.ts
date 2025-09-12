@@ -1,86 +1,25 @@
-import { and, eq, desc, sql, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/index.js";
+import { forumMedias } from "@/db/models/forum_medias.js";
+import { forums } from "@/db/models/forums.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import {
-  forums,
-  forumMedias,
-  users,
-  forumLikes,
-  followers,
-} from "@/db/schema.js";
+import { forumLikes, users } from "@/db/schema.js";
+import { meilisearch } from "@/config/meilisearchConfig.js";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
-export const getAllForums = async (
-  type?: string,
-  topic?: string,
-  page?: string,
-  userId?: number
+export const searchForumsService = async (
+  query: string,
+  limit: number,
+  offset: number,
+  userId: number
 ) => {
   try {
-    const conditions = [];
-    if (type) conditions.push(eq(forums.type, type));
-    if (topic) conditions.push(eq(forums.topic, topic));
-
-    const pageNumber = Number(page) || 1;
-    const limit = 20;
-    const offset = (pageNumber - 1) * limit;
-
-    // 1️⃣ Fetch filtered forum IDs from DB
-    // Get forums from followed users
-    const followedUsersForumIds = await db
-      .select({ id: forums.id })
-      .from(forums)
-      .where(
-        inArray(
-          forums.userId,
-          db
-            .select({ followedId: followers.followedId })
-            .from(followers)
-            .where(eq(followers.userId, Number(userId)))
-        )
-      )
-      .orderBy(
-        desc(
-          sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
-        ),
-        desc(forums.viewCount),
-        desc(forums.updatedAt)
-      )
-      .limit(5);
-
-    // 1️⃣ Fetch filtered forum IDs from DB
-    const forumIds = await db
-      .select({ id: forums.id })
-      .from(forums)
-      .where(
-        and(
-          conditions.length > 0 ? and(...conditions) : undefined,
-          ne(forums.userId, Number(userId))
-        )
-      )
-      .orderBy(
-        desc(
-          sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
-        ),
-        desc(forums.viewCount),
-        desc(forums.updatedAt)
-      )
-      .offset(offset)
-      .limit(limit);
-
-    const forumIdRows = Array.from(
-      new Set([
-        ...followedUsersForumIds.map((f) => f.id),
-        ...forumIds.map((f) => f.id),
-      ])
-    ).map((id) => ({ id }));
-
-    if (!forumIdRows.length) {
-      return { data: [], hasMore: false };
-    }
-
-    // 2️⃣ Fetch forums from Redis in one call
+    const searchResults = await meilisearch.index("forums").search(query, {
+      limit,
+      offset,
+    });
+    const idsFromSearch = searchResults.hits.map((hit: any) => hit.id);
     const cachedResults = (await redis.mGet(
-      forumIdRows.map((f) => `forums:${f.id}`)
+      idsFromSearch.map((id) => `forums:${id}`)
     )) as (string | null)[];
 
     const hits: any[] = [];
@@ -89,7 +28,7 @@ export const getAllForums = async (
     if (cachedResults.length > 0) {
       cachedResults.forEach((item, idx) => {
         if (item) hits.push(JSON.parse(item));
-        else missedIds.push(forumIdRows[idx].id);
+        else missedIds.push(idsFromSearch[idx]);
       });
     }
 
@@ -156,7 +95,7 @@ export const getAllForums = async (
     const allForumsMap = new Map<number, any>();
     for (const forum of [...hits, ...missedForums])
       allForumsMap.set(forum.id, forum);
-    const allForums = forumIdRows.map((f) => allForumsMap.get(f.id));
+    const allForums = idsFromSearch.map((f) => allForumsMap.get(f.id));
 
     // 5️⃣ Fetch dynamic fields fresh
     const dynamicData = await db
@@ -164,7 +103,7 @@ export const getAllForums = async (
         id: forums.id,
         viewCount: forums.viewCount,
         likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+        isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
       })
       .from(forums)
       .leftJoin(
@@ -177,7 +116,7 @@ export const getAllForums = async (
       .where(
         inArray(
           forums.id,
-          forumIdRows.map((f) => f.id)
+          idsFromSearch.map((f) => f.id)
         )
       )
       .groupBy(forums.id, forumLikes.forumId);
@@ -188,12 +127,13 @@ export const getAllForums = async (
         ...f,
         viewCount: (dynamic?.viewCount ?? 0) + 1,
         likeCount: Number(dynamic?.likeCount) || 0,
-        isLiked: !!dynamic?.isLiked,
+        isLike: !!dynamic?.isLike,
       };
     });
 
     return { data: forumsWithMedia, hasMore: allForums.length === limit };
   } catch (error) {
-    throw new Error((error as Error).message);
+    console.error("Error searching blogs:", error);
+    throw error;
   }
 };

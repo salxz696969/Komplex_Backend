@@ -300,3 +300,12 @@ export const globalRateLimiter = createRateLimiterMiddleware(
     keyPrefix: "global",
   })
 );
+
+export const searchRateLimiter = createRateLimiterMiddleware(
+  createLimiter({
+    points: 60,
+    duration: 60,
+    blockDuration: 60,
+    keyPrefix: "search",
+  })
+);

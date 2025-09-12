@@ -14,6 +14,7 @@ import {
 import { deleteFromCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
 import { deleteVideoCommentInternal } from "@/app/komplex/services/me/video-comments/[id]/service.js";
 import { redis } from "@/db/redis/redisConfig.js";
+import { meilisearch } from "@/config/meilisearchConfig.js";
 
 export const likeVideo = async (videoId: number, userId: number) => {
   if (!userId) {
@@ -223,6 +224,12 @@ export const updateVideo = async (
     );
   const cacheVideoKey = `video:${videoRow.id}`;
   await redis.set(cacheVideoKey, JSON.stringify(videoRow), { EX: 600 });
+  const meilisearchData = {
+    id: videoRow.id,
+    title: videoRow.title,
+    description: videoRow.description,
+  };
+  await meilisearch.index("videos").addDocuments([meilisearchData]);
 
   // If questions are provided, update exercise/questions/choices
   if (Array.isArray(questionsPayload) && questionsPayload.length > 0) {
@@ -512,6 +519,17 @@ export const deleteVideo = async (id: number, userId: number) => {
     .delete(videos)
     .where(and(eq(videos.id, Number(id)), eq(videos.userId, Number(userId))))
     .returning();
+  await redis.del(`videos:${id}`);
+  const myVideoKeys: string[] = await redis.keys(
+    `myVideos:${userId}:type:*:topic:*`
+  );
+
+  if (myVideoKeys.length > 0) {
+    await redis.del(myVideoKeys);
+  }
+  await redis.del(`dashboardData:${userId}`);
+
+  await meilisearch.index("videos").deleteDocument(String(id)); // ✅ expects a string ID
 
   return { data: deletedVideo, gotToStep };
 };

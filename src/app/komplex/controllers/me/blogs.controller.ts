@@ -50,7 +50,7 @@ export const saveBlogController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await blogByIdService.saveBlog(id, Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
@@ -66,7 +66,7 @@ export const unsaveBlogController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await blogByIdService.unsaveBlog(id, Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
@@ -82,7 +82,7 @@ export const updateBlogController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await blogByIdService.updateBlog(
       id,
       req.body,
@@ -103,7 +103,7 @@ export const deleteBlogController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await blogByIdService.deleteBlog(id, Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {

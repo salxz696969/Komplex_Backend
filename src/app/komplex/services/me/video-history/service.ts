@@ -9,7 +9,7 @@ export const getUserVideoHistory = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user;
 
     const videoHistory = await db
       .select()

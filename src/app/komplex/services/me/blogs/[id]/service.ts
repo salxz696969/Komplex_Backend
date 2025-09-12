@@ -6,6 +6,7 @@ import {
   deleteFromCloudflare,
 } from "@/db/cloudflare/cloudflareFunction.js";
 import { redis } from "@/db/redis/redisConfig.js";
+import { meilisearch } from "@/config/meilisearchConfig.js";
 
 export const updateBlog = async (
   id: string,
@@ -144,6 +145,23 @@ export const updateBlog = async (
   };
 
   await redis.set(`blogs:${id}`, JSON.stringify(blogWithMedia), { EX: 600 });
+  await redis.del(`dashboardData:${userId}`);
+  const myBlogKeys: string[] = await redis.keys(
+    `myBlogs:${userId}:type:*:topic:*`
+  );
+
+  if (myBlogKeys.length > 0) {
+    await redis.del(myBlogKeys);
+  }
+
+  const meilisearchData = {
+    id: blogWithMedia.id,
+    title: blogWithMedia.title,
+    description: blogWithMedia.description,
+    type: blogWithMedia.type,
+    topic: blogWithMedia.topic,
+  };
+  await meilisearch.index("blogs").addDocuments([meilisearchData]);
 
   return { data: updatedBlog, newBlogMedia };
 };
@@ -200,6 +218,7 @@ export const deleteBlog = async (id: string, userId: number) => {
     await redis.del(myBlogKeys);
   }
 
+  await meilisearch.index("blogs").deleteDocument(String(id));
   return {
     data: deletedBlog,
   };

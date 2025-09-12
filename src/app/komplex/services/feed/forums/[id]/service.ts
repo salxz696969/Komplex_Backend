@@ -27,6 +27,7 @@ export const getForumById = async (id: string, userId: number) => {
         mediaUrl: forumMedias.url,
         mediaType: forumMedias.mediaType,
         username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        profileImage: users.profileImage,
       })
       .from(forums)
       .leftJoin(forumMedias, eq(forums.id, forumMedias.forumId))
@@ -57,6 +58,7 @@ export const getForumById = async (id: string, userId: number) => {
       createdAt: forum[0].createdAt,
       updatedAt: new Date(),
       username: forum[0].username,
+      profileImage: forum[0].profileImage,
       media: forum
         .filter((f) => f.mediaUrl)
         .map((f) => ({

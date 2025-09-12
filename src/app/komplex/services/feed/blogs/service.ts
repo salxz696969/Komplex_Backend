@@ -1,7 +1,8 @@
-import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, followers, users, userSavedBlogs } from "@/db/schema.js";
+import { profile } from "console";
 
 export const getAllBlogs = async (type?: string, topic?: string, page?: string, userId?: number) => {
 	try {
@@ -36,7 +37,7 @@ export const getAllBlogs = async (type?: string, topic?: string, page?: string, 
 		const blogIds = await db
 			.select({ id: blogs.id })
 			.from(blogs)
-			.where(conditions.length > 0 ? and(...conditions) : undefined)
+			.where(and(conditions.length > 0 ? and(...conditions) : undefined, ne(blogs.userId, Number(userId))))
 			.orderBy(
 				desc(sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
 				desc(blogs.likeCount),
@@ -84,6 +85,7 @@ export const getAllBlogs = async (type?: string, topic?: string, page?: string, 
 					mediaUrl: blogMedia.url,
 					mediaType: blogMedia.mediaType,
 					username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+					profileImage: users.profileImage,
 				})
 				.from(blogs)
 				.leftJoin(blogMedia, eq(blogs.id, blogMedia.blogId))
@@ -103,6 +105,7 @@ export const getAllBlogs = async (type?: string, topic?: string, page?: string, 
 						createdAt: blog.createdAt,
 						updatedAt: blog.updatedAt,
 						username: blog.username,
+						profileImage: blog.profileImage,
 						media: [] as { url: string; type: string }[],
 					};
 					blogMap.set(blog.id, formatted);
