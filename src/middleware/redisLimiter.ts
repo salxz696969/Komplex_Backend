@@ -131,7 +131,7 @@ export const getBigContentRateLimiter = createRateLimiterMiddleware(
 );
 export const getVideoRateLimiter = createRateLimiterMiddleware(
   createLimiter({
-    points: 15,
+    points: 20,
     duration: 60,
     blockDuration: 60,
     keyPrefix: "get-video",

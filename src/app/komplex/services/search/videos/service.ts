@@ -91,8 +91,8 @@ export const searchVideosService = async (
         viewCount: videos.viewCount,
         likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
         saveCount: sql`COUNT(DISTINCT ${userSavedVideos.id})`,
-        isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
-        isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
+        isLiked: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
+        isSaved: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
       })
       .from(videos)
       .leftJoin(
@@ -124,8 +124,8 @@ export const searchVideosService = async (
         viewCount: Number(dynamic?.viewCount ?? 0) + 1,
         likeCount: Number(dynamic?.likeCount) || 0,
         saveCount: Number(dynamic?.saveCount) || 0,
-        isLike: !!dynamic?.isLike,
-        isSave: !!dynamic?.isSave,
+        isLiked: !!dynamic?.isLiked,
+        isSaved: !!dynamic?.isSaved,
       };
     });
 

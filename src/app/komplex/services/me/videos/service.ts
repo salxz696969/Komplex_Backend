@@ -45,8 +45,8 @@ export const getAllMyVideos = async (query: any, userId: number) => {
       updatedAt: videos.updatedAt,
       username: sql`${users.firstName} || ' ' || ${users.lastName}`,
       profileImage: users.profileImage,
-      isSave: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
-      isLike: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
+      isSaved: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
+      isLiked: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
       likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
       saveCount: sql`COUNT(DISTINCT ${userSavedVideos.id})`,
     })

@@ -22,7 +22,7 @@ export const getAllRepliesForAComment = async (id: string, userId: number, page:
 		.select({
 			id: forumReplies.id,
 			likeCount: sql`COUNT(DISTINCT ${forumReplyLikes.forumReplyId})`,
-			isLike: sql`CASE WHEN ${forumReplyLikes.forumReplyId} IS NOT NULL THEN true ELSE false END`,
+			isLiked: sql`CASE WHEN ${forumReplyLikes.forumReplyId} IS NOT NULL THEN true ELSE false END`,
 		})
 		.from(forumReplies)
 		.leftJoin(
@@ -110,7 +110,7 @@ export const getAllRepliesForAComment = async (id: string, userId: number, page:
 		return {
 			...r,
 			likeCount: Number(dynamic?.likeCount) || 0,
-			isLike: !!dynamic?.isLike,
+			isLiked: !!dynamic?.isLiked,
 		};
 	});
 

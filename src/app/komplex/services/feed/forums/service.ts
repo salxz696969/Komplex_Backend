@@ -54,7 +54,7 @@ export const getAllForums = async (
       .where(
         and(
           conditions.length > 0 ? and(...conditions) : undefined,
-          ne(forums.userId, Number(userId))
+          // ne(forums.userId, Number(userId))
         )
       )
       .orderBy(

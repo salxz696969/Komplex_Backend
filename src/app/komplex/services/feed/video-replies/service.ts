@@ -23,7 +23,7 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 		.select({
 			id: videoReplies.id,
 			likeCount: sql`COUNT(DISTINCT ${videoReplyLike.videoReplyId})`,
-			isLike: sql`CASE WHEN ${videoReplyLike.videoReplyId} IS NOT NULL THEN true ELSE false END`,
+			isLiked: sql`CASE WHEN ${videoReplyLike.videoReplyId} IS NOT NULL THEN true ELSE false END`,
 		})
 		.from(videoReplies)
 		.leftJoin(
@@ -64,7 +64,8 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 				videoReplyMedias.url,
 				videoReplyMedias.mediaType,
 				users.firstName,
-				users.lastName
+				users.lastName,
+				users.profileImage
 			)
 			.orderBy(
 				desc(sql`COUNT(DISTINCT ${videoReplyLike.id})`),
@@ -107,7 +108,7 @@ export const getAllVideoRepliesForAComment = async (id: string, userId: number, 
 		return {
 			...r,
 			likeCount: Number(dynamic?.likeCount) || 0,
-			isLike: !!dynamic?.isLike,
+			isLiked: !!dynamic?.isLiked,
 		};
 	});
 

@@ -101,7 +101,7 @@ export const searchBlogsService = async (
         id: blogs.id,
         viewCount: blogs.viewCount,
         likeCount: blogs.likeCount,
-        isSave: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
+        isSaved: sql`CASE WHEN ${userSavedBlogs.blogId} IS NOT NULL THEN true ELSE false END`,
       })
       .from(blogs)
       .leftJoin(
@@ -124,7 +124,7 @@ export const searchBlogsService = async (
         ...b,
         viewCount: dynamic?.viewCount ?? 0,
         likeCount: dynamic?.likeCount ?? 0,
-        isSave: !!dynamic?.isSave,
+        isSaved: !!dynamic?.isSaved,
       };
     });
 

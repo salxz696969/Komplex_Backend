@@ -103,7 +103,7 @@ export const searchForumsService = async (
         id: forums.id,
         viewCount: forums.viewCount,
         likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
-        isLike: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+        isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
       })
       .from(forums)
       .leftJoin(
@@ -127,7 +127,7 @@ export const searchForumsService = async (
         ...f,
         viewCount: (dynamic?.viewCount ?? 0) + 1,
         likeCount: Number(dynamic?.likeCount) || 0,
-        isLike: !!dynamic?.isLike,
+        isLiked: !!dynamic?.isLiked,
       };
     });
 
