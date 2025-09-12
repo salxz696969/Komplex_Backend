@@ -8,7 +8,7 @@ export const getAllCommentsForAForumController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { page } = req.query;
     const pageNumber = Number(page) || 1;
 

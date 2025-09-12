@@ -22,7 +22,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 		.select({
 			id: forumComments.id,
 			likeCount: sql`COUNT(DISTINCT ${forumCommentLikes.forumCommentId})`,
-			isLike: sql`CASE WHEN ${forumCommentLikes.forumCommentId} IS NOT NULL THEN true ELSE false END`,
+			isLiked: sql`CASE WHEN ${forumCommentLikes.forumCommentId} IS NOT NULL THEN true ELSE false END`,
 		})
 		.from(forumComments)
 		.leftJoin(
@@ -47,6 +47,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 				mediaUrl: forumCommentMedias.url,
 				mediaType: forumCommentMedias.mediaType,
 				username: sql`${users.firstName} || ' ' || ${users.lastName}`,
+				profileImage: users.profileImage,
 			})
 			.from(forumComments)
 			.leftJoin(forumCommentMedias, eq(forumComments.id, forumCommentMedias.forumCommentId))
@@ -85,6 +86,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 						updatedAt: comment.updatedAt,
 						media: [] as { url: string; type: string }[],
 						username: comment.username,
+						profileImage: comment.profileImage,
 					};
 				}
 				if (comment.mediaUrl) {
@@ -108,7 +110,7 @@ export const getAllCommentsForAForum = async (id: string, userId: number, page: 
 		return {
 			...c,
 			likeCount: Number(dynamic?.likeCount) || 0,
-			isLike: !!dynamic?.isLike,
+			isLiked: !!dynamic?.isLiked ,
 		};
 	});
 

@@ -3,6 +3,8 @@ import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, users } from "@/db/schema.js";
 import { uploadImageToCloudflare } from "@/db/cloudflare/cloudflareFunction.js";
+import { meilisearch } from "@/config/meilisearchConfig.js";
+import { profile } from "console";
 
 export const getAllMyBlogs = async (
   page: string,
@@ -36,6 +38,7 @@ export const getAllMyBlogs = async (
       createdAt: blogs.createdAt,
       userFirstName: users.firstName,
       userLastName: users.lastName,
+      profileImage: users.profileImage,
     })
     .from(blogs)
     .leftJoin(users, eq(blogs.userId, users.id))
@@ -63,6 +66,7 @@ export const getAllMyBlogs = async (
         viewCount: blog.viewCount,
         createdAt: blog.createdAt,
         username: `${blog.userFirstName} ${blog.userLastName}`,
+        profileImage: blog.profileImage,
         media: media.map((m) => ({ url: m.url, mediaType: m.mediaType })),
       };
     })
@@ -155,6 +159,14 @@ export const postBlog = async (body: any, files: any, userId: number) => {
     })),
   };
   const redisKey = `blogs:${newBlog.id}`;
+  const meilisearchData = {
+    id: blogWithMedia.id,
+    title: blogWithMedia.title,
+    description: blogWithMedia.description,
+    type: blogWithMedia.type,
+    topic: blogWithMedia.topic,
+  };
+  await meilisearch.index("blogs").addDocuments([meilisearchData]);
 
   await redis.set(redisKey, JSON.stringify(blogWithMedia), { EX: 600 });
   await redis.del(`dashboardData:${userId}`);

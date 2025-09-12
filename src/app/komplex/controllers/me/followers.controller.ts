@@ -10,7 +10,7 @@ export const getUserFollowersController = async (
     res: Response
   ) => {
     try {
-      const { userId } = req.user ?? { userId: "1" };
+      const { userId } = req.user;
       const cacheKey = `followers:userId:${userId}`;
       const redisData = await redis.get(cacheKey);
       if (redisData) {

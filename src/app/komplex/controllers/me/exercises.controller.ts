@@ -8,7 +8,7 @@ import * as exerciseByIdService from "@/app/komplex/services/me/exercises/[id]/s
 //   res: Response
 // ) => {
 //   try {
-//     const { userId } = req.user ?? { userId: 1 };
+//     const { userId } = req.user;
 //     const result = await exerciseService.getExercises(Number(userId));
 //     return res.status(200).json(result.data);
 //   } catch (error: any) {
@@ -25,7 +25,7 @@ export const getExerciseHistoryController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await exerciseService.getExerciseHistory(Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
@@ -41,7 +41,7 @@ export const getExerciseDashboardController = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const result = await exerciseService.getExerciseDashboard(Number(userId));
     return res.status(200).json(result.data);
   } catch (error) {
@@ -81,7 +81,7 @@ export const submitExerciseController = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId } = req.user ?? { userId: 1 };
+    const { userId } = req.user;
     const { answers, score, timeTaken } = req.body;
     const result = await exerciseByIdService.submitExercise(
       id,

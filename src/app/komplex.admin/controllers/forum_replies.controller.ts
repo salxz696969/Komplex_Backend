@@ -163,7 +163,7 @@ export const updateForumReply = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user;
     const { id } = req.params;
     const { description, photosToRemove } = req.body;
 
@@ -282,7 +282,7 @@ export const deleteForumReply = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.user ?? { userId: "1" };
+    const { userId } = req.user;
     const { id } = req.params;
 
     const doesUserOwnThisReply = await db

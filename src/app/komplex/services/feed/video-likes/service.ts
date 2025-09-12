@@ -14,6 +14,7 @@ export const getVideoLikes = async (id: string) => {
     userId: like.video_likes.userId,
     videoId: like.video_likes.videoId,
     username: like.users?.firstName + " " + like.users?.lastName,
+    profileImage: like.users?.profileImage,
     createdAt: like.video_likes.createdAt,
     updatedAt: like.video_likes.updatedAt,
   }));

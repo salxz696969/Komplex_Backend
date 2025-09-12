@@ -1,110 +1,36 @@
-import { and, eq, desc, sql, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/index.js";
+import { blogMedia } from "@/db/models/blog_media.js";
+import { blogs } from "@/db/models/blogs.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import {
-  blogs,
-  blogMedia,
-  followers,
-  users,
-  userSavedBlogs,
-} from "@/db/schema.js";
-import { profile } from "console";
+import { users, userSavedBlogs } from "@/db/schema.js";
+import { meilisearch } from "@/config/meilisearchConfig.js";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
-export const getAllBlogs = async (
-  type?: string,
-  topic?: string,
-  page?: string,
-  userId?: number
+export const searchBlogsService = async (
+  query: string,
+  limit: number,
+  offset: number,
+  userId: number
 ) => {
   try {
-    const conditions = [];
-    if (type) conditions.push(eq(blogs.type, type));
-    if (topic) conditions.push(eq(blogs.topic, topic));
-
-    const pageNumber = Number(page) || 1;
-    const limit = 20;
-    const offset = (pageNumber - 1) * limit;
-
-    const followedUsersBlogsId = await db
-      .select({ id: blogs.id })
-      .from(blogs)
-      .where(
-        inArray(
-          blogs.userId,
-          db
-            .select({ followedId: followers.followedId })
-            .from(followers)
-            .where(eq(followers.userId, Number(userId)))
-        )
-      )
-      .orderBy(
-        desc(
-          sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
-        ),
-        desc(blogs.likeCount),
-        desc(blogs.updatedAt)
-      )
-      .limit(5);
-
-    // 1️⃣ Fetch filtered blog IDs from DB (including your own blogs) might change to other user's blogs only in the future
-    const blogIds = await db
-      .select({ id: blogs.id })
-      .from(blogs)
-      .where(
-        conditions.length > 0
-          ? and(
-              ...conditions
-              // ne(blogs.userId, Number(userId))
-            )
-          : undefined
-      )
-      .orderBy(
-        desc(
-          sql`CASE WHEN DATE(${blogs.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`
-        ),
-        desc(blogs.likeCount),
-        desc(blogs.updatedAt)
-      )
-      .offset(offset)
-      .limit(limit);
-
-    const blogIdRows = Array.from(
-      Array.from(
-        new Set([
-          ...followedUsersBlogsId.map((f) => f.id),
-          ...blogIds.map((f) => f.id),
-        ])
-      ).map((id) => ({
-        id,
-      }))
-    );
-
-    if (!blogIdRows.length) {
-      return { data: [], hasMore: false };
-    }
-
-    // 2️⃣ Fetch blogs from Redis in one call
+    const searchResults = await meilisearch.index("blogs").search(query, {
+      limit,
+      offset,
+    });
+    const idsFromSearch = searchResults.hits.map((hit: any) => hit.id);
     const cachedResults = (await redis.mGet(
-      blogIdRows.map((b) => `blogs:${b.id}`)
+      idsFromSearch.map((id) => `blogs:${id}`)
     )) as (string | null)[];
-
-    // ! REMOVE
-    for (const blog of blogIdRows) {
-      await redis.del(`blogs:${blog.id}`);
-    }
 
     const hits: any[] = [];
     const missedIds: number[] = [];
 
     if (cachedResults.length > 0) {
-      console.log("not cached");
       cachedResults.forEach((item, idx) => {
         if (item) hits.push(JSON.parse(item));
-        else missedIds.push(blogIdRows[idx].id);
+        else missedIds.push(idsFromSearch[idx]);
       });
     }
-
-    console.log("cached");
 
     // 3️⃣ Fetch missing blogs from DB
     let missedBlogs: any[] = [];
@@ -167,7 +93,7 @@ export const getAllBlogs = async (
     const allBlogsMap = new Map<number, any>();
     for (const blog of [...hits, ...missedBlogs])
       allBlogsMap.set(blog.id, blog);
-    const allBlogs = blogIdRows.map((b) => allBlogsMap.get(b.id));
+    const allBlogs = idsFromSearch.map((id) => allBlogsMap.get(id));
 
     // 5️⃣ Fetch dynamic fields fresh
     const dynamicData = await db
@@ -188,7 +114,7 @@ export const getAllBlogs = async (
       .where(
         inArray(
           blogs.id,
-          blogIdRows.map((b) => b.id)
+          idsFromSearch.map((b) => b.id)
         )
       );
 
@@ -204,6 +130,7 @@ export const getAllBlogs = async (
 
     return { data: blogsWithMedia, hasMore: allBlogs.length === limit };
   } catch (error) {
-    throw new Error((error as Error).message);
+    console.error("Error searching blogs:", error);
+    throw error;
   }
 };

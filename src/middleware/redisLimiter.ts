@@ -131,7 +131,7 @@ export const getBigContentRateLimiter = createRateLimiterMiddleware(
 );
 export const getVideoRateLimiter = createRateLimiterMiddleware(
   createLimiter({
-    points: 15,
+    points: 20,
     duration: 60,
     blockDuration: 60,
     keyPrefix: "get-video",
@@ -298,5 +298,14 @@ export const globalRateLimiter = createRateLimiterMiddleware(
     duration: 60,
     blockDuration: 60,
     keyPrefix: "global",
+  })
+);
+
+export const searchRateLimiter = createRateLimiterMiddleware(
+  createLimiter({
+    points: 60,
+    duration: 60,
+    blockDuration: 60,
+    keyPrefix: "search",
   })
 );
