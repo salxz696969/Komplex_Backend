@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getAllVideosController,
+  getRecommendedVideosController,
   getVideoByIdController,
   // TODO: Future features - these functions need to be implemented
   // getVideoComments,
@@ -25,5 +26,12 @@ router.get(
   getVideoRateLimiter,
   getVideoByIdController as any
 ); // GET /feed/videos/:id - specific video details
+
+router.get(
+  "/:id/recommended",
+  verifyFirebaseToken as any,
+  getVideoRateLimiter,
+  getRecommendedVideosController as any
+); // GET /feed/videos/:id/recommended - recommended videos based on this video
 
 export default router;
