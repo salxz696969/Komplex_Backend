@@ -1,4 +1,4 @@
-import { verifyFirebaseToken } from "@/middleware/auth.js";
+import {  verifyFirebaseTokenOptional } from "@/middleware/auth.js";
 import { Router } from "express";
 import {
   getAllBlogsController,
@@ -13,14 +13,14 @@ const router = Router();
 
 router.get(
   "/",
-  verifyFirebaseToken as any,
+  verifyFirebaseTokenOptional as any,
   getSmallContentRateLimiter,
   getAllBlogsController as any
 );
 
 router.get(
   "/:id",
-  verifyFirebaseToken as any,
+  verifyFirebaseTokenOptional as any,
   getSmallContentRateLimiter,
   getBlogByIdController as any
 );
