@@ -48,7 +48,11 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 app.use(
   cors({
-    origin: [process.env.CORS_ORIGIN as string, "http://localhost:3000", "http://localhost:4000"],
+    origin: [
+      process.env.CORS_ORIGIN as string,
+      "http://localhost:3000",
+      "http://localhost:4000",
+    ],
     credentials: true,
   })
 );

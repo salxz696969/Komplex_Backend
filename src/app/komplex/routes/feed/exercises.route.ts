@@ -1,4 +1,4 @@
-import { verifyFirebaseToken } from "./../../../../middleware/auth.js";
+import { verifyFirebaseTokenOptional } from "./../../../../middleware/auth.js";
 import { Router } from "express";
 import {
   getExercisesController,
@@ -11,8 +11,8 @@ import { getSmallContentRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
-router.get("/", verifyFirebaseToken as any, getSmallContentRateLimiter, getExercisesController as any);
-router.get("/:id", verifyFirebaseToken as any, getSmallContentRateLimiter, getExerciseController as any);
+router.get("/", verifyFirebaseTokenOptional as any, getSmallContentRateLimiter, getExercisesController as any);
+router.get("/:id", verifyFirebaseTokenOptional as any, getSmallContentRateLimiter, getExerciseController as any);
 
 // TODO: Future features
 // router.get("/:id/stats", getExerciseStats); // Exercise statistics

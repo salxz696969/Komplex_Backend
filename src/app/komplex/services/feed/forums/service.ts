@@ -27,7 +27,7 @@ export const getAllForums = async (
     // 1️⃣ Fetch filtered forum IDs from DB
     // Get forums from followed users
     const followedUsersForumIds = await db
-      .select({ id: forums.id })
+      .select({ id: forums.id, userId: forums.userId })
       .from(forums)
       .where(
         inArray(
@@ -49,11 +49,11 @@ export const getAllForums = async (
 
     // 1️⃣ Fetch filtered forum IDs from DB
     const forumIds = await db
-      .select({ id: forums.id })
+      .select({ id: forums.id, userId: forums.userId })
       .from(forums)
       .where(
         and(
-          conditions.length > 0 ? and(...conditions) : undefined,
+          conditions.length > 0 ? and(...conditions) : undefined
           // ne(forums.userId, Number(userId))
         )
       )
@@ -192,7 +192,26 @@ export const getAllForums = async (
       };
     });
 
-    return { data: forumsWithMedia, hasMore: allForums.length === limit };
+    const forumUserIdRows = Array.from(
+      Array.from(
+        new Set([
+          ...followedUsersForumIds.map((f) => f.userId),
+          ...forumIds.map((f) => f.userId),
+        ])
+      ).map((id) => ({
+        userId: id,
+      }))
+    );
+
+    const forumsWithMediaAndIsFollowing = forumsWithMedia.map((forum) => ({
+      ...forum,
+      isFollowing: forumUserIdRows.some((b) => b.userId === forum.userId),
+    }));
+
+    return {
+      data: forumsWithMediaAndIsFollowing,
+      hasMore: allForums.length === limit,
+    };
   } catch (error) {
     throw new Error((error as Error).message);
   }

@@ -9,15 +9,11 @@ export const getUserVideos = async (userId: number, page?: string, topic?: strin
 		const limit = 20;
 		const pageNumber = Number(page) || 1;
 		const offset = (pageNumber - 1) * limit;
-
 		// Try to get from cache first
 		const cachedVideos = await redis.get(cacheKey);
 		const parsedData = cachedVideos ? JSON.parse(cachedVideos) : null;
 		if (parsedData) {
-			return { parsedData };
-		}
-		if (cachedVideos) {
-			return { data: JSON.parse(cachedVideos) };
+			return { data: parsedData, hasMore: parsedData.length === limit };
 		}
 
 		const userVideos = await db
@@ -45,7 +41,7 @@ export const getUserVideos = async (userId: number, page?: string, topic?: strin
 			.offset(offset);
 
 		// Cache for 5 minutes
-		await redis.set(cacheKey, JSON.stringify({ data: userVideos, hasMore: userVideos.length === limit }), {
+		await redis.set(cacheKey, JSON.stringify(userVideos), {
 			EX: 300,
 		});
 

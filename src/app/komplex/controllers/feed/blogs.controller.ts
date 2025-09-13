@@ -25,7 +25,10 @@ export const getAllBlogsController = async (
   }
 };
 
-export const getBlogByIdController = async (req: AuthenticatedRequest, res: Response) => {
+export const getBlogByIdController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;

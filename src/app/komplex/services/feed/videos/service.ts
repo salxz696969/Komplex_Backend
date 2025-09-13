@@ -29,7 +29,7 @@ export const getAllVideos = async (
     // 1️⃣ Fetch filtered video IDs from DB
     // Get videos from followed users
     const followedUsersVideosId = await db
-      .select({ id: videos.id })
+      .select({ id: videos.id, userId: videos.userId })
       .from(videos)
       .where(
         inArray(
@@ -54,7 +54,7 @@ export const getAllVideos = async (
 
     // 1️⃣ Fetch filtered video IDs from DB
     const videoIds = await db
-      .select({ id: videos.id })
+      .select({ id: videos.id, userId: videos.userId })
       .from(videos)
       .where(
         and(
@@ -234,7 +234,26 @@ export const getAllVideos = async (
       };
     });
 
-    return { data: videosWithMedia, hasMore: allVideos.length === limit };
+    const videoUserIdRows = Array.from(
+      Array.from(
+        new Set([
+          ...followedUsersVideosId.map((f) => f.userId),
+          ...videoIds.map((f) => f.userId),
+        ])
+      ).map((id) => ({
+        userId: id,
+      }))
+    );
+
+    const videosWithMediaAndIsFollowing = videosWithMedia.map((video) => ({
+      ...video,
+      isFollowing: videoUserIdRows.some((b) => b.userId === video.userId),
+    }));
+
+    return {
+      data: videosWithMediaAndIsFollowing,
+      hasMore: allVideos.length === limit,
+    };
   } catch (error) {
     throw new Error((error as Error).message);
   }

@@ -26,7 +26,7 @@ export const getAllBlogs = async (
     const offset = (pageNumber - 1) * limit;
 
     const followedUsersBlogsId = await db
-      .select({ id: blogs.id })
+      .select({ id: blogs.id, userId: blogs.userId })
       .from(blogs)
       .where(
         inArray(
@@ -48,7 +48,7 @@ export const getAllBlogs = async (
 
     // 1️⃣ Fetch filtered blog IDs from DB (including your own blogs) might change to other user's blogs only in the future
     const blogIds = await db
-      .select({ id: blogs.id })
+      .select({ id: blogs.id, userId: blogs.userId })
       .from(blogs)
       .where(
         conditions.length > 0
@@ -88,11 +88,6 @@ export const getAllBlogs = async (
       blogIdRows.map((b) => `blogs:${b.id}`)
     )) as (string | null)[];
 
-    // ! REMOVE
-    for (const blog of blogIdRows) {
-      await redis.del(`blogs:${blog.id}`);
-    }
-
     const hits: any[] = [];
     const missedIds: number[] = [];
 
@@ -103,8 +98,6 @@ export const getAllBlogs = async (
         else missedIds.push(blogIdRows[idx].id);
       });
     }
-
-    console.log("cached");
 
     // 3️⃣ Fetch missing blogs from DB
     let missedBlogs: any[] = [];
@@ -202,7 +195,26 @@ export const getAllBlogs = async (
       };
     });
 
-    return { data: blogsWithMedia, hasMore: allBlogs.length === limit };
+    const blogUserIdRows = Array.from(
+      Array.from(
+        new Set([
+          ...followedUsersBlogsId.map((f) => f.userId),
+          ...blogIds.map((f) => f.userId),
+        ])
+      ).map((id) => ({
+        userId: id,
+      }))
+    );
+
+    const blogsWithMediaAndIsFollowing = blogsWithMedia.map((blog) => ({
+      ...blog,
+      isFollowing: blogUserIdRows.some((b) => b.userId === blog.userId),
+    }));
+
+    return {
+      data: blogsWithMediaAndIsFollowing,
+      hasMore: allBlogs.length === limit,
+    };
   } catch (error) {
     throw new Error((error as Error).message);
   }

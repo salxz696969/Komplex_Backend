@@ -33,3 +33,18 @@ export const getVideoByIdController = async (req: AuthenticatedRequest, res: Res
 		});
 	}
 };
+
+export const getRecommendedVideosController = async (
+	req: AuthenticatedRequest,
+	res: Response
+) => {
+	try {
+		const { userId } = req.user;
+		const { limit, offset } = req.query;
+		const {id}= req.params;
+		const result = await videoByIdService.getRecommendedVideos(Number(userId),Number(id), limit, offset);
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({ success: false, error: (error as Error).message });
+	}
+};

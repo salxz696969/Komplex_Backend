@@ -1,5 +1,11 @@
 import { db } from "@/db/index.js";
-import { blogs, blogMedia, users, userSavedBlogs } from "@/db/schema.js";
+import {
+  blogs,
+  blogMedia,
+  users,
+  userSavedBlogs,
+  followers,
+} from "@/db/schema.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { eq, and, sql } from "drizzle-orm";
 import { profile } from "console";
@@ -91,8 +97,19 @@ export const getBlogById = async (id: string, userId: number) => {
     )
     .where(eq(blogs.id, Number(id)));
 
+  const isFollowing = await db
+    .select()
+    .from(followers)
+    .where(
+      and(
+        eq(followers.followedId, Number(blogData.userId)),
+        eq(followers.userId, userId)
+      )
+    );
+
   const blogWithMedia = {
     ...blogData,
+    isFollowing: isFollowing.length > 0,
     viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
     likeCount: dynamic[0]?.likeCount ?? 0,
     isSaved: !!dynamic[0]?.isSaved,
