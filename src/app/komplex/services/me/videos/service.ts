@@ -16,6 +16,7 @@ import { meilisearch } from "@/config/meilisearchConfig.js";
 export const getAllMyVideos = async (query: any, userId: number) => {
   const { topic, type, page } = query;
   const conditions = [];
+  conditions.push(eq(videos.userId, userId));
   const limit = 20;
   const offset = ((Number(page) || 1) - 1) * limit;
   if (topic) conditions.push(eq(videos.topic, topic as string));
@@ -76,7 +77,8 @@ export const getAllMyVideos = async (query: any, userId: number) => {
       userSavedVideos.videoId,
       videoLikes.videoId,
       userSavedVideos.id,
-      videoLikes.id
+      videoLikes.id,
+      users.profileImage
     )
     .limit(limit)
     .offset(offset)

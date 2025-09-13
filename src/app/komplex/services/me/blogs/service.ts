@@ -1,4 +1,4 @@
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
 import { db } from "@/db/index.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { blogs, blogMedia, users } from "@/db/schema.js";
@@ -13,6 +13,7 @@ export const getAllMyBlogs = async (
   topic?: string
 ) => {
   const conditions = [];
+  conditions.push(eq(blogs.userId, userId));
   if (type) conditions.push(eq(blogs.type, type as string));
   if (topic) conditions.push(eq(blogs.topic, topic as string));
   const pageNumber = Number(page) || 1;
@@ -42,7 +43,7 @@ export const getAllMyBlogs = async (
     })
     .from(blogs)
     .leftJoin(users, eq(blogs.userId, users.id))
-    .where(eq(blogs.userId, userId))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .limit(limit)
     .offset(offset)
     .orderBy(

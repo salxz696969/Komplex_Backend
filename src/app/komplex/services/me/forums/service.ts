@@ -13,6 +13,7 @@ export const getAllMyForums = async (
 ) => {
   const { type, topic } = query;
   const conditions = [];
+  conditions.push(eq(forums.userId, userId));
   if (type) conditions.push(eq(forums.type, type as string));
   if (topic) conditions.push(eq(forums.topic, topic as string));
   const pageNumber = Number(page) || 1;
@@ -69,7 +70,8 @@ export const getAllMyForums = async (
       forumMedias.mediaType,
       users.firstName,
       users.lastName,
-      forumLikes.forumId
+      forumLikes.forumId,
+      users.profileImage
     )
     .offset(offset)
     .limit(limit);
