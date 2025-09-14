@@ -10,7 +10,7 @@ export const forumSearchController = async (req: AuthenticatedRequest, res: Resp
             return res.status(400).json({ success: false, message: "Query parameter is required" });
         }
         const result = await searchForumsService(query as string, Number(limit), Number(offset), Number(userId));
-        return res.status(200).json({ result });
+        return res.status(200).json(result);
     } catch (error) {
         return res.status(500).json({
             success: false,
