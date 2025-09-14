@@ -175,6 +175,9 @@ export const getVideoById = async (videoId: number, userId: number) => {
     ...videoRow,
     exercises: videoExercises,
     isFollowing: isFollowing.length > 0,
+    viewCount: Number(videoRow.viewCount), // Convert to number
+    likeCount: Number(videoRow.likeCount), // Convert to number
+    saveCount: Number(videoRow.saveCount), // Convert to number
   };
 
   return { data: videoWithExercises };

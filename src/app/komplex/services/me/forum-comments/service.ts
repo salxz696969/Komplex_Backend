@@ -58,10 +58,10 @@ export const postForumComment = async (
     }
   }
   const [username] = await db
-    .select({ 
-      firstName: users.firstName, 
+    .select({
+      firstName: users.firstName,
       lastName: users.lastName,
-      profileImage: users.profileImage // Add this line
+      profileImage: users.profileImage, // Add this line
     })
     .from(users)
     .where(eq(users.id, Number(userId)));

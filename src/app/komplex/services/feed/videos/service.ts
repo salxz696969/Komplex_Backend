@@ -132,14 +132,17 @@ export const getAllVideos = async (
           userSavedVideos,
           and(
             eq(userSavedVideos.videoId, videos.id),
-            eq(userSavedVideos.userId, 1)
+            eq(userSavedVideos.userId, Number(userId))
           )
         )
         .leftJoin(
           videoLikes,
-          and(eq(videoLikes.videoId, videos.id), eq(videoLikes.userId, 1))
+          and(
+            eq(videoLikes.videoId, videos.id),
+            eq(videoLikes.userId, Number(userId))
+          )
         )
-        .where(eq(videos.id, 3))
+        .where(inArray(videos.id, missedIds))
         .groupBy(
           videos.id,
           videos.userId,
@@ -226,7 +229,7 @@ export const getAllVideos = async (
       const dynamic = dynamicData.find((d) => d.id === v.id);
       return {
         ...v,
-        viewCount: Number(dynamic?.viewCount ?? 0) + 1,
+        viewCount: Number(dynamic?.viewCount ?? 0), // Remove the +1 since view count is already incremented in getVideoById
         likeCount: Number(dynamic?.likeCount) || 0,
         saveCount: Number(dynamic?.saveCount) || 0,
         isLiked: !!dynamic?.isLiked,
