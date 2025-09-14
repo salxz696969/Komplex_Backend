@@ -27,7 +27,7 @@ export const getExerciseHistoryController = async (
   try {
     const { userId } = req.user;
     const result = await exerciseService.getExerciseHistory(Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       message: "Internal server error",
@@ -43,7 +43,7 @@ export const getExerciseDashboardController = async (
   try {
     const { userId } = req.user;
     const result = await exerciseService.getExerciseDashboard(Number(userId));
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       message: "Internal server error",
@@ -63,7 +63,7 @@ export const getExerciseByIdController = async (
       id,
       Number(userId)
     );
-    return res.status(200).json(result.data);
+    return res.status(200).json(result);
   } catch (error) {
     if ((error as Error).message === "History not found") {
       return res.status(404).json({ message: "History not found" });
