@@ -33,7 +33,10 @@ export const getAllVideoRepliesForAComment = async (
     .from(videoReplies)
     .leftJoin(
       videoReplyLike,
-      and(eq(videoReplyLike.videoReplyId, videoReplies.id), eq(videoReplyLike.userId, userId))
+      and(
+        eq(videoReplyLike.videoReplyId, videoReplies.id),
+        eq(videoReplyLike.userId, userId)
+      )
     )
     .leftJoin(users, eq(users.id, videoReplies.userId)) // Add this join
     .where(eq(videoReplies.videoCommentId, Number(id)))

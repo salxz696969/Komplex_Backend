@@ -44,7 +44,11 @@ export const getAllCommentsForAForum = async (
     )
     .leftJoin(users, eq(users.id, forumComments.userId)) // Add this join
     .where(eq(forumComments.forumId, Number(id)))
-    .groupBy(forumComments.id, forumCommentLikes.forumCommentId, users.profileImage) // Add users.profileImage to groupBy
+    .groupBy(
+      forumComments.id,
+      forumCommentLikes.forumCommentId,
+      users.profileImage
+    ) // Add users.profileImage to groupBy
     .offset(offset)
     .limit(limit);
 

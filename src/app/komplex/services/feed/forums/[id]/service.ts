@@ -44,15 +44,6 @@ export const getForumById = async (id: string, userId: number) => {
       throw new Error("Forum not found");
     }
 
-    // Increment view count
-    await db
-      .update(forums)
-      .set({
-        viewCount: (forum[0]?.viewCount ?? 0) + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(forums.id, Number(id)));
-
     // Build static cacheable object
     forumData = {
       id: forum[0].id,
@@ -79,13 +70,22 @@ export const getForumById = async (id: string, userId: number) => {
     });
   }
 
+  // Always increment view count on every request
+  await db
+    .update(forums)
+    .set({
+      viewCount: sql`${forums.viewCount} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(forums.id, Number(id)));
+
   // Always fetch dynamic fields fresh
   const dynamic = await db
     .select({
       viewCount: forums.viewCount,
       likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
       isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
-      profileImage: users.profileImage, // Add this line
+      profileImage: users.profileImage,
     })
     .from(forums)
     .leftJoin(
@@ -95,9 +95,9 @@ export const getForumById = async (id: string, userId: number) => {
         eq(forumLikes.userId, Number(userId))
       )
     )
-    .leftJoin(users, eq(forums.userId, users.id)) // Add this join
+    .leftJoin(users, eq(forums.userId, users.id))
     .where(eq(forums.id, Number(id)))
-    .groupBy(forums.id, forumLikes.forumId, users.profileImage); // Add users.profileImage to groupBy
+    .groupBy(forums.id, forumLikes.forumId, users.profileImage);
 
   const isFollowing = await db
     .select()
@@ -112,10 +112,10 @@ export const getForumById = async (id: string, userId: number) => {
   const forumWithMedia = {
     ...forumData,
     isFollowing: isFollowing.length > 0,
-    viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
+    viewCount: dynamic[0]?.viewCount ?? 0, // Use the fresh viewCount from database
     likeCount: Number(dynamic[0]?.likeCount) || 0,
     isLiked: !!dynamic[0]?.isLiked,
-    profileImage: dynamic[0]?.profileImage || forumData.profileImage, // Ensure profileImage is included
+    profileImage: dynamic[0]?.profileImage || forumData.profileImage,
   };
 
   return { data: forumWithMedia };

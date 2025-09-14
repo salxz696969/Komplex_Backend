@@ -45,7 +45,11 @@ export const getAllVideoCommentsForAVideo = async (
     )
     .leftJoin(users, eq(users.id, videoComments.userId)) // Add this join
     .where(eq(videoComments.videoId, Number(id)))
-    .groupBy(videoComments.id, videoCommentLike.videoCommentId, users.profileImage) // Add users.profileImage to groupBy
+    .groupBy(
+      videoComments.id,
+      videoCommentLike.videoCommentId,
+      users.profileImage
+    ) // Add users.profileImage to groupBy
     .offset(offset)
     .limit(limit);
 
