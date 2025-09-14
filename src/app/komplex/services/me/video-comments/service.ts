@@ -56,7 +56,11 @@ export const postVideoComment = async (
   }
 
   const [username] = await db
-    .select({ firstName: users.firstName, lastName: users.lastName })
+    .select({
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImage: users.profileImage, // Add this line
+    })
     .from(users)
     .where(eq(users.id, Number(userId)));
   const videoCommentWithMedia = {
@@ -66,6 +70,7 @@ export const postVideoComment = async (
     createdAt: insertComment.createdAt,
     updatedAt: insertComment.updatedAt,
     username: username.firstName + " " + username.lastName,
+    profileImage: username.profileImage, // Add this line
     media: newCommentMedia.map((m) => ({
       url: m.url,
       type: m.mediaType,

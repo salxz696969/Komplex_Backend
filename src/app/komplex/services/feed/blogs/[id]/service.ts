@@ -8,7 +8,6 @@ import {
 } from "@/db/schema.js";
 import { redis } from "@/db/redis/redisConfig.js";
 import { eq, and, sql } from "drizzle-orm";
-import { profile } from "console";
 
 export const getBlogById = async (id: string, userId: number) => {
   const cacheKey = `blogs:${id}`;
@@ -45,15 +44,6 @@ export const getBlogById = async (id: string, userId: number) => {
       throw new Error("Blog not found");
     }
 
-    // Increment view count
-    await db
-      .update(blogs)
-      .set({
-        viewCount: (blog[0]?.viewCount ?? 0) + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(blogs.id, Number(id)));
-
     // Build static cacheable object
     blogData = {
       id: blog[0].id,
@@ -79,6 +69,15 @@ export const getBlogById = async (id: string, userId: number) => {
       EX: 600, // 10 minutes
     });
   }
+
+  // Always increment view count on every request
+  await db
+    .update(blogs)
+    .set({
+      viewCount: sql`${blogs.viewCount} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(blogs.id, Number(id)));
 
   // Always fetch dynamic fields fresh
   const dynamic = await db
@@ -110,7 +109,7 @@ export const getBlogById = async (id: string, userId: number) => {
   const blogWithMedia = {
     ...blogData,
     isFollowing: isFollowing.length > 0,
-    viewCount: (dynamic[0]?.viewCount ?? 0) + 1,
+    viewCount: dynamic[0]?.viewCount ?? 0, // Use the fresh viewCount from database
     likeCount: dynamic[0]?.likeCount ?? 0,
     isSaved: !!dynamic[0]?.isSaved,
   };

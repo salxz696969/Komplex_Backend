@@ -1,4 +1,4 @@
-import { avg, count, eq, inArray, sum } from "drizzle-orm";
+import { avg, count, eq, inArray, isNull, sum } from "drizzle-orm";
 import { db } from "../../../db/index.js";
 import {
   choices,
@@ -16,7 +16,7 @@ export const getExercises = async (req: Request, res: Response) => {
   try {
     const { grade } = req.query;
     const cacheKey = `exercises:${grade || "all"}`;
-	await redis.del(cacheKey);
+    await redis.del(cacheKey);
 
     const cacheData = await redis.get(cacheKey);
     if (cacheData) {
@@ -43,14 +43,13 @@ export const getExercises = async (req: Request, res: Response) => {
       .leftJoin(
         userExerciseHistory,
         eq(exercises.id, userExerciseHistory.exerciseId)
-      );
+      )
+      .where(isNull(exercises.videoId)); // Add this line to filter for null videoId
 
     // Execute query with or without filters
     let result;
     if (grade) {
-      result = await baseQuery
-        .where(and(eq(exercises.grade, grade as string)))
-        .groupBy(exercises.id);
+      result = await baseQuery.groupBy(exercises.id);
     } else {
       result = await baseQuery.groupBy(exercises.id);
     }

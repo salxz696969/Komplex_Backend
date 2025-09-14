@@ -123,7 +123,7 @@ export const getSmallContentRateLimiter = createRateLimiterMiddleware(
 );
 export const getBigContentRateLimiter = createRateLimiterMiddleware(
   createLimiter({
-    points: 20,
+    points: 50,
     duration: 60,
     blockDuration: 60,
     keyPrefix: "get-big-content",

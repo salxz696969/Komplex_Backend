@@ -33,6 +33,7 @@ export const getAllVideoCommentsForAVideo = async (
       id: videoComments.id,
       likeCount: sql`COUNT(DISTINCT ${videoCommentLike.videoCommentId})`,
       isLiked: sql`CASE WHEN ${videoCommentLike.videoCommentId} IS NOT NULL THEN true ELSE false END`,
+      profileImage: users.profileImage, // Add this line
     })
     .from(videoComments)
     .leftJoin(
@@ -42,8 +43,13 @@ export const getAllVideoCommentsForAVideo = async (
         eq(videoCommentLike.userId, Number(userId))
       )
     )
+    .leftJoin(users, eq(users.id, videoComments.userId)) // Add this join
     .where(eq(videoComments.videoId, Number(id)))
-    .groupBy(videoComments.id, videoCommentLike.videoCommentId)
+    .groupBy(
+      videoComments.id,
+      videoCommentLike.videoCommentId,
+      users.profileImage
+    ) // Add users.profileImage to groupBy
     .offset(offset)
     .limit(limit);
 
@@ -131,6 +137,7 @@ export const getAllVideoCommentsForAVideo = async (
       ...c,
       likeCount: Number(dynamic?.likeCount) || 0,
       isLiked: !!dynamic?.isLiked,
+      profileImage: dynamic?.profileImage || c.profileImage, // Ensure profileImage is included
     };
   });
 

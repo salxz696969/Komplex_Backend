@@ -154,8 +154,37 @@ export const getAllForums = async (
 
     // 4️⃣ Merge hits and missed forums, preserving original order
     const allForumsMap = new Map<number, any>();
-    for (const forum of [...hits, ...missedForums])
+    for (const forum of [...hits, ...missedForums]) {
       allForumsMap.set(forum.id, forum);
+    }
+
+    // Ensure all forums have profileImage - fetch missing profileImages for cached forums
+    const forumsNeedingProfileImage = [...hits].filter(
+      (forum) => !forum.profileImage
+    );
+    if (forumsNeedingProfileImage.length > 0) {
+      const profileImageData = await db
+        .select({
+          id: forums.id,
+          profileImage: users.profileImage,
+        })
+        .from(forums)
+        .leftJoin(users, eq(forums.userId, users.id))
+        .where(
+          inArray(
+            forums.id,
+            forumsNeedingProfileImage.map((f) => f.id)
+          )
+        );
+
+      for (const profileData of profileImageData) {
+        const forum = allForumsMap.get(profileData.id);
+        if (forum) {
+          forum.profileImage = profileData.profileImage;
+        }
+      }
+    }
+
     const allForums = forumIdRows.map((f) => allForumsMap.get(f.id));
 
     // 5️⃣ Fetch dynamic fields fresh
@@ -165,6 +194,7 @@ export const getAllForums = async (
         viewCount: forums.viewCount,
         likeCount: sql`COUNT(DISTINCT ${forumLikes.id})`,
         isLiked: sql`CASE WHEN ${forumLikes.forumId} IS NOT NULL THEN true ELSE false END`,
+        profileImage: users.profileImage, // Add this line
       })
       .from(forums)
       .leftJoin(
@@ -174,13 +204,14 @@ export const getAllForums = async (
           eq(forumLikes.userId, Number(userId))
         )
       )
+      .leftJoin(users, eq(forums.userId, users.id)) // Add this join
       .where(
         inArray(
           forums.id,
           forumIdRows.map((f) => f.id)
         )
       )
-      .groupBy(forums.id, forumLikes.forumId);
+      .groupBy(forums.id, forumLikes.forumId, users.profileImage); // Add users.profileImage to groupBy
 
     const forumsWithMedia = allForums.map((f) => {
       const dynamic = dynamicData.find((d) => d.id === f.id);
@@ -189,6 +220,7 @@ export const getAllForums = async (
         viewCount: (dynamic?.viewCount ?? 0) + 1,
         likeCount: Number(dynamic?.likeCount) || 0,
         isLiked: !!dynamic?.isLiked,
+        profileImage: dynamic?.profileImage || f.profileImage, // Ensure profileImage is included
       };
     });
 

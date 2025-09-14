@@ -21,7 +21,7 @@ export const videoSearchController = async (
       Number(offset),
       Number(userId)
     );
-    return res.status(200).json({ result });
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({
       success: false,

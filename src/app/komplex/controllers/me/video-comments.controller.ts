@@ -8,7 +8,7 @@ export const postVideoCommentController = async (
   res: Response
 ) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user.userId;
     const { description } = req.body;
     const { id } = req.params;
     const files = req.files;
