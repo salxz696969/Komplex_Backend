@@ -62,7 +62,11 @@ export const postVideoReply = async (
   }
 
   const [username] = await db
-    .select({ firstName: users.firstName, lastName: users.lastName })
+    .select({ 
+      firstName: users.firstName, 
+      lastName: users.lastName,
+      profileImage: users.profileImage // Add this line
+    })
     .from(users)
     .where(eq(users.id, Number(userId)));
   const replyWithMedia = {
@@ -73,6 +77,7 @@ export const postVideoReply = async (
     createdAt: insertReply.createdAt,
     updatedAt: insertReply.updatedAt,
     username: username.firstName + " " + username.lastName,
+    profileImage: username.profileImage, // Add this line
     media: newVideoReplyMedia.map((m) => ({
       url: m.url,
       type: m.mediaType,

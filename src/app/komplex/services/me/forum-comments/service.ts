@@ -58,7 +58,11 @@ export const postForumComment = async (
     }
   }
   const [username] = await db
-    .select({ firstName: users.firstName, lastName: users.lastName })
+    .select({ 
+      firstName: users.firstName, 
+      lastName: users.lastName,
+      profileImage: users.profileImage // Add this line
+    })
     .from(users)
     .where(eq(users.id, Number(userId)));
   const forumCommentWithMedia = {
@@ -68,6 +72,7 @@ export const postForumComment = async (
     createdAt: newForumComment.createdAt,
     updatedAt: newForumComment.updatedAt,
     username: username.firstName + " " + username.lastName,
+    profileImage: username.profileImage, // Add this line
     isSave: false,
     media: newCommentMedia.map((m) => ({
       url: m.url,
