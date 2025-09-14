@@ -62,9 +62,11 @@ export const getSignedUrlFromCloudflare = async (
     ? "komplex-image"
     : "komplex-video";
 
-  const key = `${userId}/${encodeURIComponent(
-    fileName
-  )}-${crypto.randomUUID()}`;
+  const safeFileName = fileName
+    .replace(/\s+/g, "_")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "_"); // replace spaces with _
+
+  const key = `${userId}/${safeFileName}-${crypto.randomUUID()}`;
 
   const command = await new PutObjectCommand({
     Bucket: bucket,
