@@ -32,6 +32,7 @@ export const getAllRepliesForAComment = async (
       id: forumReplies.id,
       likeCount: sql`COUNT(DISTINCT ${forumReplyLikes.forumReplyId})`,
       isLiked: sql`CASE WHEN ${forumReplyLikes.forumReplyId} IS NOT NULL THEN true ELSE false END`,
+      profileImage: users.profileImage, // Add this line
     })
     .from(forumReplies)
     .leftJoin(
@@ -41,8 +42,9 @@ export const getAllRepliesForAComment = async (
         eq(forumReplyLikes.userId, Number(userId))
       )
     )
+    .leftJoin(users, eq(users.id, forumReplies.userId)) // Add this join
     .where(eq(forumReplies.forumCommentId, Number(id)))
-    .groupBy(forumReplies.id, forumReplyLikes.forumReplyId)
+    .groupBy(forumReplies.id, forumReplyLikes.forumReplyId, users.profileImage) // Add users.profileImage to groupBy
     .offset(offset)
     .limit(limit);
 
@@ -136,6 +138,7 @@ export const getAllRepliesForAComment = async (
       ...r,
       likeCount: Number(dynamic?.likeCount) || 0,
       isLiked: !!dynamic?.isLiked,
+      profileImage: dynamic?.profileImage || r.profileImage, // Ensure profileImage is included
     };
   });
 
