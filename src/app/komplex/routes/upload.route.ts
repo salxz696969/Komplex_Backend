@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { getSignedUrl } from "../controllers/upload.controller.js";
-import { verifyFirebaseToken } from "@/middleware/auth.js";
+import { verifyFirebaseTokenOptional } from "@/middleware/auth.js";
 import { postVideoRateLimiter } from "@/middleware/redisLimiter.js";
 
 const router = Router();
 
 router.post(
   "/upload-url",
-  verifyFirebaseToken as any,
+  verifyFirebaseTokenOptional as any,
   postVideoRateLimiter,
   getSignedUrl as any
 );

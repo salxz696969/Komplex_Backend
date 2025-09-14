@@ -9,7 +9,7 @@ export const getSignedUrl = async (
   try {
     const { fileName, fileType } = req.body;
     // user already checked at middleware
-    const userId = req.user.userId;
+    const userId = req.user.userId || 0;
 
     if (!fileName || !fileType) {
       return res
