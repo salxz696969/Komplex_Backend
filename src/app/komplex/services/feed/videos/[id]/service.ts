@@ -24,12 +24,45 @@ export const getVideoById = async (videoId: number, userId: number) => {
 	const cacheVideoData = await redis.get(cacheVideoKey);
 	const cacheExercisesData = await redis.get(cacheExercisesKey);
 	if (cacheVideoData && cacheExercisesData) {
-		const video = JSON.parse(cacheVideoData);
+		let video = JSON.parse(cacheVideoData);
 		const exercises = JSON.parse(cacheExercisesData);
 		const isFollowing = await db
 			.select()
 			.from(followers)
 			.where(and(eq(followers.followedId, Number(video.userId)), eq(followers.userId, userId)));
+		const realTimeData = await db
+			.select({
+				viewCount: videos.viewCount,
+				likeCount: sql`COUNT(DISTINCT ${videoLikes.id})`,
+				saveCount: sql`COUNT(DISTINCT ${userSavedVideos.id})`,
+				isLiked: sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`,
+				isSaved: sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
+			})
+			.from(videos)
+			.leftJoin(videoLikes, and(eq(videoLikes.videoId, videos.id), eq(videoLikes.userId, Number(userId))))
+			.leftJoin(
+				userSavedVideos,
+				and(eq(userSavedVideos.videoId, videos.id), eq(userSavedVideos.userId, Number(userId)))
+			)
+			.where(eq(videos.id, videoId));
+		video = {
+			...video,
+			...realTimeData[0],
+			viewCount: Number(realTimeData[0].viewCount),
+			likeCount: Number(realTimeData[0].likeCount),
+			saveCount: Number(realTimeData[0].saveCount),
+			isLiked: !!realTimeData[0].isLiked,
+			isSaved: !!realTimeData[0].isSaved,
+		};
+		// Always increment view count on every request
+		await db.update(videos).set({ viewCount: video.viewCount }).where(eq(videos.id, videoId));
+		// insert into history
+		await db.insert(userVideoHistory).values({
+			userId: Number(userId),
+			videoId: videoId,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
 		return {
 			data: { ...video, exercises, isFollowing: isFollowing.length > 0 },
 		};
@@ -84,8 +117,8 @@ export const getVideoById = async (videoId: number, userId: number) => {
 			sql`CASE WHEN ${userSavedVideos.videoId} IS NOT NULL THEN true ELSE false END`,
 			sql`CASE WHEN ${videoLikes.videoId} IS NOT NULL THEN true ELSE false END`
 		);
-
-	await redis.set(cacheVideoKey, JSON.stringify(videoRow), { EX: 600 });
+	const { likeCount, saveCount, isLiked, isSaved, viewCount } = videoRow;
+	await redis.set(cacheVideoKey, JSON.stringify({ likeCount, saveCount, isLiked, isSaved, viewCount }), { EX: 600 });
 
 	if (!videoRow) {
 		throw new Error("Video not found");
