@@ -77,7 +77,7 @@ export const getExercises = async (grade: string, userId: number) => {
 				});
 			}
 			await redis.set(cacheKey, JSON.stringify(cacheExerciseForAGrade), {
-				EX: 60 * 60 * 24,
+				EX: 60 * 60,
 			});
 		}
 
