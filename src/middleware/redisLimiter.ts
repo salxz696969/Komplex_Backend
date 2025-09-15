@@ -294,7 +294,7 @@ export const adminSignupRateLimiter = createRateLimiterMiddleware(
 // --- Global Limiter ---
 export const globalRateLimiter = createRateLimiterMiddleware(
   createLimiter({
-    points: 1000,
+    points: 3000,
     duration: 60,
     blockDuration: 60,
     keyPrefix: "global",

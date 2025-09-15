@@ -17,7 +17,7 @@ import {
 const router = Router();
 
 router.post(
-  "/",
+  "/:id",
   verifyFirebaseToken as any,
   postBigRateLimiter,
   postVideoReplyController as any

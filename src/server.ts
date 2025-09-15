@@ -64,8 +64,6 @@ app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
 
-// app routes
-
 app.use("/api/", routes);
 app.use("/api/admin", adminRoutes);
 

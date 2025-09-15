@@ -96,8 +96,13 @@ export const postVideoComment = async (
 
   if (cached) {
     const parsed = JSON.parse(cached);
-    parsed.commentsWithMedia.push(videoCommentWithMedia);
-    await redis.set(cacheKey, JSON.stringify(parsed), { EX: 600 });
+    const list = Array.isArray(parsed)
+      ? parsed
+      : parsed?.commentsWithMedia || [];
+    list.push(videoCommentWithMedia);
+    await redis.set(cacheKey, JSON.stringify({ commentsWithMedia: list }), {
+      EX: 600,
+    });
   } else {
     await redis.set(
       cacheKey,
