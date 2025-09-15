@@ -8,6 +8,14 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 export const searchForumsService = async (query: string, limit: number, offset: number, userId: number) => {
 	try {
+		const searchAmount = await meilisearch.index("forums").search("", { limit: 1 });
+		if (searchAmount.estimatedTotalHits === 0) {
+			const cacheKey = "forumSearch";
+			const dataFromRedis = await redis.lRange(cacheKey, 0, -1);
+			if (dataFromRedis.length > 0) {
+				await meilisearch.index("forums").addDocuments(dataFromRedis.map((item) => JSON.parse(item)));
+			}
+		}
 		const searchResults = await meilisearch.index("forums").search(query, {
 			limit,
 			offset,

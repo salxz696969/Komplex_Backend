@@ -198,7 +198,20 @@ export const postVideo = async (body: any, userId: number) => {
 		type: videoWithMedia.type,
 		topic: videoWithMedia.topic,
 	};
-	await meilisearch.index("videos").addDocuments([meilisearchData]);
+	const searchAmount = await meilisearch.index("videos").search("", { limit: 1 });
+	const cacheKey = "videoSearch";
+	const documents = [];
+
+	// Load cached data if index is empty
+	if (searchAmount.estimatedTotalHits === 0) {
+		const dataFromRedis = await redis.lRange(cacheKey, 0, -1);
+		if (dataFromRedis.length > 0) {
+			documents.push(...dataFromRedis.map((item) => JSON.parse(item)));
+		}
+	}
+	documents.push(meilisearchData);
+	await meilisearch.index("videos").addDocuments(documents);
+	await redis.lPush(cacheKey, JSON.stringify(meilisearchData));
 
 	// Create exercise for video quiz
 	console.log(questions);

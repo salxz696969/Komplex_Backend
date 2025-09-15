@@ -195,7 +195,28 @@ export const postForum = async (body: any, files: any, userId: number) => {
 		})),
 	};
 	const redisKey = `forums:${newForum.id}`;
-	await meilisearch.index("forums").addDocuments([forumWithMedia]);
+
+	const meilisearchData = {
+		id: forumWithMedia.id,
+		title: forumWithMedia.title,
+		description: forumWithMedia.description,
+		type: forumWithMedia.type,
+		topic: forumWithMedia.topic,
+	};
+	const searchAmount = await meilisearch.index("forums").search("", { limit: 1 });
+	const cacheKey = "forumSearch";
+	const documents = [];
+
+	// Load cached data if index is empty
+	if (searchAmount.estimatedTotalHits === 0) {
+		const dataFromRedis = await redis.lRange(cacheKey, 0, -1);
+		if (dataFromRedis.length > 0) {
+			documents.push(...dataFromRedis.map((item) => JSON.parse(item)));
+		}
+	}
+	documents.push(meilisearchData);
+	await meilisearch.index("forums").addDocuments(documents);
+	await redis.lPush(cacheKey, JSON.stringify(meilisearchData));
 
 	await redis.set(redisKey, JSON.stringify(forumWithMedia), { EX: 600 });
 	await redis.del(`dashboardData:${userId}`);

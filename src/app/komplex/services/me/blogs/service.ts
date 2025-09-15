@@ -19,23 +19,23 @@ export const getAllMyBlogs = async (page: string, userId: number, type?: string,
 	const parsedCached = cached ? JSON.parse(cached) : null;
 	if (parsedCached) {
 		let dataToSend = [] as any[];
-    await Promise.all(
-      parsedCached.data.map(async (blog: any) => {
-        const [freshBlogData] = await db
-          .select({
-            likeCount: sql`COUNT(DISTINCT ${blogs.likeCount})`,
-            viewCount: blogs.viewCount,
-          })
-          .from(blogs)
-          .where(eq(blogs.id, blog.id))
-          .groupBy(blogs.id);
-        dataToSend.push({
-          ...blog,
-          likeCount: Number(freshBlogData.likeCount),
-          viewCount: freshBlogData.viewCount,
-        });
-      })
-    );
+		await Promise.all(
+			parsedCached.data.map(async (blog: any) => {
+				const [freshBlogData] = await db
+					.select({
+						likeCount: sql`COUNT(DISTINCT ${blogs.likeCount})`,
+						viewCount: blogs.viewCount,
+					})
+					.from(blogs)
+					.where(eq(blogs.id, blog.id))
+					.groupBy(blogs.id);
+				dataToSend.push({
+					...blog,
+					likeCount: Number(freshBlogData.likeCount),
+					viewCount: freshBlogData.viewCount,
+				});
+			})
+		);
 		return { data: [...dataToSend], hasMore: parsedCached.length === limit };
 	}
 	const blogsFromDb = await db
@@ -166,7 +166,20 @@ export const postBlog = async (body: any, files: any, userId: number) => {
 		type: blogWithMedia.type,
 		topic: blogWithMedia.topic,
 	};
-	await meilisearch.index("blogs").addDocuments([meilisearchData]);
+	const searchAmount = await meilisearch.index("blogs").search("", { limit: 1 });
+	const cacheKey = "blogSearch";
+	const documents = [];
+
+	// Load cached data if index is empty
+	if (searchAmount.estimatedTotalHits === 0) {
+		const dataFromRedis = await redis.lRange(cacheKey, 0, -1);
+		if (dataFromRedis.length > 0) {
+			documents.push(...dataFromRedis.map((item) => JSON.parse(item)));
+		}
+	}
+	documents.push(meilisearchData);
+	await meilisearch.index("blogs").addDocuments(documents);
+	await redis.lPush(cacheKey, JSON.stringify(meilisearchData));
 
 	await redis.set(redisKey, JSON.stringify(blogWithMedia), { EX: 600 });
 	await redis.del(`dashboardData:${userId}`);
