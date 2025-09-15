@@ -1,9 +1,9 @@
 import { db } from "@/db/index.js";
 import { videos } from "@/db/models/videos.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { users, userSavedVideos, videoLikes } from "@/db/schema.js";
+import { followers, users, userSavedVideos, videoLikes } from "@/db/schema.js";
 import { meilisearch } from "@/config/meilisearchConfig.js";
-import { and, ConsoleLogWriter, eq, inArray, sql } from "drizzle-orm";
+import { and, ConsoleLogWriter, desc, eq, inArray, sql } from "drizzle-orm";
 
 export const searchVideosService = async (query: string, limit: number, offset: number, userId: number) => {
 	try {
@@ -13,7 +13,45 @@ export const searchVideosService = async (query: string, limit: number, offset: 
 		});
 
 		// 2️⃣ Extract IDs
-		const videoIdRows: number[] = searchResults.hits.map((hit: any) => hit.id);
+		let videoIdRows = searchResults.hits.map((hit: any) => hit.id);
+		if (searchResults.hits.length === 0) {
+			const followedUsersVideosId = await db
+				.select({ id: videos.id, userId: videos.userId })
+				.from(videos)
+				.where(
+					inArray(
+						videos.userId,
+						db
+							.select({ followedId: followers.followedId })
+							.from(followers)
+							.where(eq(followers.userId, Number(userId)))
+					)
+				)
+				.orderBy(
+					desc(sql`CASE WHEN DATE(${videos.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+					desc(videos.viewCount),
+					desc(videos.updatedAt),
+					desc(sql`(SELECT COUNT(*) FROM ${videoLikes} WHERE ${videoLikes.videoId} = ${videos.id})`)
+				)
+				.limit(5);
+
+			// 1️⃣ Fetch filtered video IDs from DB
+			const videoIds = await db
+				.select({ id: videos.id, userId: videos.userId })
+				.from(videos)
+				.orderBy(
+					desc(sql`CASE WHEN DATE(${videos.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+					desc(videos.viewCount),
+					desc(videos.updatedAt),
+					desc(sql`(SELECT COUNT(*) FROM ${videoLikes} WHERE ${videoLikes.videoId} = ${videos.id})`)
+				)
+				.offset(offset)
+				.limit(limit);
+
+			videoIdRows = Array.from(
+				new Set([...followedUsersVideosId.map((f) => f.id), ...videoIds.map((f) => f.id)])
+			);
+		}
 
 		// 3️⃣ Check cache
 		const cachedResults = (await redis.mGet(videoIdRows.map((id) => `videos:${id}`))) as (string | null)[];
@@ -94,7 +132,7 @@ export const searchVideosService = async (query: string, limit: number, offset: 
 			};
 		});
 
-		return { data: videosWithMedia, hasMore: allVideos.length === limit };
+		return { data: videosWithMedia, hasMore: allVideos.length === limit, isMatch: searchResults.hits.length > 0 };
 	} catch (error) {
 		console.error("Error searching videos:", error);
 		throw error;

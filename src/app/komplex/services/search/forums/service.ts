@@ -2,9 +2,9 @@ import { db } from "@/db/index.js";
 import { forumMedias } from "@/db/models/forum_medias.js";
 import { forums } from "@/db/models/forums.js";
 import { redis } from "@/db/redis/redisConfig.js";
-import { forumLikes, users } from "@/db/schema.js";
+import { followers, forumLikes, users } from "@/db/schema.js";
 import { meilisearch } from "@/config/meilisearchConfig.js";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 export const searchForumsService = async (query: string, limit: number, offset: number, userId: number) => {
 	try {
@@ -12,7 +12,41 @@ export const searchForumsService = async (query: string, limit: number, offset: 
 			limit,
 			offset,
 		});
-		const idsFromSearch = searchResults.hits.map((hit: any) => hit.id);
+		let idsFromSearch = searchResults.hits.map((hit: any) => hit.id);
+		if (searchResults.hits.length === 0) {
+			const followedUsersForumsId = await db
+				.select({ id: forums.id, userId: forums.userId })
+				.from(forums)
+				.where(
+					inArray(
+						forums.userId,
+						db
+							.select({ followedId: followers.followedId })
+							.from(followers)
+							.where(eq(followers.userId, Number(userId)))
+					)
+				)
+				.orderBy(
+					desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+					desc(forums.updatedAt)
+				)
+				.limit(5);
+
+			// 1️⃣ Fetch filtered forum IDs from DB (including your own forums) might change to other user's forums only in the future
+			const forumIds = await db
+				.select({ id: forums.id, userId: forums.userId })
+				.from(forums)
+				.orderBy(
+					desc(sql`CASE WHEN DATE(${forums.updatedAt}) = CURRENT_DATE THEN 1 ELSE 0 END`),
+					desc(forums.updatedAt)
+				)
+				.offset(offset)
+				.limit(limit);
+
+			idsFromSearch = Array.from(
+				Array.from(new Set([...followedUsersForumsId.map((f) => f.id), ...forumIds.map((f) => f.id)]))
+			);
+		}
 		const cachedResults = (await redis.mGet(idsFromSearch.map((id) => `forums:${id}`))) as (string | null)[];
 
 		const hits: any[] = [];
@@ -125,9 +159,9 @@ export const searchForumsService = async (query: string, limit: number, offset: 
 			};
 		});
 
-		return { data: forumsWithMedia, hasMore: allForums.length === limit };
+		return { data: forumsWithMedia, hasMore: allForums.length === limit, isMatch: searchResults.hits.length > 0 };
 	} catch (error) {
-		console.error("Error searching blogs:", error);
+		console.error("Error searching forums:", error);
 		throw error;
 	}
 };
