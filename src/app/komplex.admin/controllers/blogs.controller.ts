@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import {
-  deleteFromCloudinary,
-  uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction.js";
+// import {
+//   deleteFromCloudinary,
+//   uploadToCloudinary,
+// } from "../../../db/cloudinary/cloundinaryFunction.js";
 import { db } from "../../../db/index.js";
 import { blogs, users, userSavedBlogs } from "../../../db/schema.js";
 import { and, eq } from "drizzle-orm";
@@ -19,17 +19,17 @@ export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
     let public_url: string | null = null;
     let mediaType: "image" | "video" | null = null;
 
-    if (req.file) {
-      const result = (await uploadToCloudinary(
-        req.file.buffer,
-        "my_app_uploads",
-        "auto"
-      )) as {
-        public_url: string;
-      };
-      public_url = result.public_url;
-      mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-    }
+    // if (req.file) {
+    //   const result = (await uploadToCloudinary(
+    //     req.file.buffer,
+    //     "my_app_uploads",
+    //     "auto"
+    //   )) as {
+    //     public_url: string;
+    //   };
+    //   public_url = result.public_url;
+    //   mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+    // }
 
     const { userId } = req.user ?? {};
     const { title, description, type, topic } = req.body;
@@ -69,7 +69,7 @@ export const postBlog = async (req: AuthenticatedRequest, res: Response) => {
     } catch (dbError) {
       // If DB insert fails and we uploaded a file, delete from Cloudinary
       if (public_url && mediaType) {
-        await deleteFromCloudinary(public_url, mediaType);
+        // await deleteFromCloudinary(public_url, mediaType);
       }
       return res
         .status(500)

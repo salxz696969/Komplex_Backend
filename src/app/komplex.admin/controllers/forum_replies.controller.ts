@@ -12,10 +12,10 @@ import {
   deleteFromCloudflare,
   uploadImageToCloudflare,
 } from "../../../db/cloudflare/cloudflareFunction.js";
-import {
-  deleteFromCloudinary,
-  uploadToCloudinary,
-} from "../../../db/cloudinary/cloundinaryFunction.js";
+// import {
+//   deleteFromCloudinary,
+//   uploadToCloudinary,
+// } from "../../../db/cloudinary/cloundinaryFunction.js";
 import { forumCommentLikes } from "../../../db/models/forum_comment_like.js";
 import { forumReplyLikes } from "../../../db/models/forum_reply_like.js";
 import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
@@ -48,17 +48,17 @@ export const postForumReply = async (
     let mediaType: "image" | "video" | null = null;
 
     // If a file is uploaded, upload to Cloudinary
-    if (req.file) {
-      const result = (await uploadToCloudinary(
-        req.file.buffer,
-        "my_app_uploads",
-        "auto"
-      )) as {
-        public_url: string;
-      };
-      public_url = result.public_url;
-      mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-    }
+    // if (req.file) {
+    //   const result = (await uploadToCloudinary(
+    //     req.file.buffer,
+    //     "my_app_uploads",
+    //     "auto"
+    //   )) as {
+    //     public_url: string;
+    //   };
+    //   public_url = result.public_url;
+    //   mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+    // }
     const { userId } = req.user ?? {};
     const { description, forumCommentId } = req.body;
 

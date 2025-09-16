@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { forumComments, forumLikes, forumMedias, forumReplies, forums, users } from "../../../db/schema.js";
 import { db } from "../../../db/index.js";
 import { Request, Response } from "express";
-import { deleteFromCloudinary, uploadToCloudinary } from "./../../../db/cloudinary/cloundinaryFunction.js";
+// import { deleteFromCloudinary, uploadToCloudinary } from "./../../../db/cloudinary/cloundinaryFunction.js";
 import { forumCommentMedias } from "../../../db/models/forum_comment_media.js";
 import { forumReplyMedias } from "../../../db/models/forum_reply_media.js";
 import { sql } from "drizzle-orm";
@@ -140,13 +140,13 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
 		let mediaType: "image" | "video" | null = null;
 
 		// If a file is uploaded, upload to Cloudinary
-		if (req.file) {
-			const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
-				public_url: string;
-			};
-			public_url = result.public_url;
-			mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-		}
+		// if (req.file) {
+		// 	const result = (await uploadToCloudinary(req.file.buffer, "my_app_uploads", "auto")) as {
+		// 		public_url: string;
+		// 	};
+		// 	public_url = result.public_url;
+		// 	mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
+		// }
 		try {
 			const { title, description, type, topic } = req.body;
 			const { id } = req.params;
@@ -171,9 +171,9 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
 			// Only create media entry if file exists
 			if (public_url && mediaType) {
 				const oldMediaUrl = await db.select().from(forumMedias).where(eq(forumMedias.forumId, newForum.id));
-				if (oldMediaUrl && oldMediaUrl.length > 0) {
-					await deleteFromCloudinary(oldMediaUrl[0].url ?? "", oldMediaUrl[0].mediaType ?? undefined);
-				}
+				// if (oldMediaUrl && oldMediaUrl.length > 0) {
+				// 	await deleteFromCloudinary(oldMediaUrl[0].url ?? "", oldMediaUrl[0].mediaType ?? undefined);
+				// }
 				newMedia = await db
 					.update(forumMedias)
 					.set({
@@ -190,7 +190,7 @@ export const updateForum = async (req: AuthenticatedRequest, res: Response) => {
 			});
 		} catch (error) {
 			if (public_url) {
-				await deleteFromCloudinary(public_url, mediaType ?? undefined);
+				// await deleteFromCloudinary(public_url, mediaType ?? undefined);
 			}
 			return res.status(500).json({
 				success: false,
@@ -301,7 +301,7 @@ export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
 		// Delete forum media
 		for (const m of mediaForum) {
 			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
+				// await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
 			}
 		}
 		await db.delete(forumMedias).where(eq(forumMedias.forumId, Number(id)));
@@ -309,7 +309,7 @@ export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
 		// Delete comment media
 		for (const m of mediaForumComment) {
 			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
+				// await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
 			}
 		}
 		if (commentIds.length > 0) {
@@ -319,7 +319,7 @@ export const deleteForum = async (req: AuthenticatedRequest, res: Response) => {
 		// Delete reply media
 		for (const m of mediaForumReply) {
 			if (m.url) {
-				await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
+				// await deleteFromCloudinary(m.url, m.mediaType ?? undefined);
 			}
 		}
 		if (replyIds.length > 0) {

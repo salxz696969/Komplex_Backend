@@ -1,0 +1,39 @@
+PORT=1234
+
+DATABASE_URL=postgresql://fake_user:fake_password@fake-host.com/fake_db?sslmode=require
+DATABASE_USER=fake_user
+DATABASE_PASSWORD=fake_password
+DATABASE_NAME=fake_db
+DATABASE_PORT=5432
+
+R2_TOKEN_VALUE=fake_token_value
+R2_ACCESS_KEY_ID=fake_access_key_id
+R2_SECRET_ACCESS_KEY=fake_secret_access_key
+R2_ENDPOINT=https://fake-endpoint.r2.cloudflarestorage.com
+R2_PHOTO_PUBLIC_URL=https://fake-photo-url.r2.dev
+R2_VIDEO_PUBLIC_URL=https://fake-video-url.r2.dev
+
+# If using host
+REDIS_USERNAME=fake_redis_user
+REDIS_PASSWORD=fake_redis_password
+REDIS_PORT=fake_redis_port
+
+# If using local
+REDIS_HOST=127.0.0.1
+
+GEMINI_API_KEY=fake_gemini_api_key
+
+FIREBASE_PROJECT_ID=fake-project-id
+FIREBASE_CLIENT_EMAIL=fake-client-email@fake-project-id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nfake_private_key\n-----END PRIVATE KEY-----\n
+
+FAST_API_KEY=https://fake-api-url.com/gemini
+INTERNAL_API_KEY=fake_internal_api_key
+
+MEILI_API_KEY=fake_meili_api_key
+
+# If using host
+MEILI_HOST_URL=https://fake-meilisearch-url.com
+
+# If using local
+MEILI_HOST_URL=http://localhost:7700

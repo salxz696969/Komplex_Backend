@@ -13,7 +13,6 @@ export const questions = pgTable("questions", {
   userId: integer("user_id"),
   title: text("title"),
   questionType: text("question_type"),
-//   points: integer("points"),
   section: varchar("section"),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at", { mode: "date" }),

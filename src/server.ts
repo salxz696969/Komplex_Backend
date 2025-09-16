@@ -7,6 +7,7 @@ import { redis } from "./db/redis/redisConfig.js";
 import routes from "./app/komplex/routes/index.js";
 import adminRoutes from "./app/komplex.admin/routes/index.js";
 import { globalRateLimiter } from "./middleware/redisLimiter.js";
+import { seedDb, seedSearch } from "./seed/seedFunction.js";
 dotenv.config();
 
 const app = express();
@@ -66,6 +67,14 @@ app.get("/ping", (req, res) => {
 
 app.use("/api/", routes);
 app.use("/api/admin", adminRoutes);
+
+// seedDb
+
+app.get("/seedDb", seedDb)
+
+// seedSearch
+
+app.get("/seedSearch", seedSearch)
 
 // connection
 
