@@ -110,6 +110,7 @@ Komplex_Backend/
     ```
 
 4. **Start the server**
+
     ```bash
     npm run dev
     ```
@@ -158,7 +159,8 @@ REDIS_HOST=127.0.0.1
 # AI Integration
 GEMINI_API_KEY=your_gemini_api_key
 FAST_API_KEY=https://your-ai-service.com/gemini
-INTERNAL_API_KEY=your_internal_api_key
+INTERNAL_API_KEY=your_internal_api_key  # Secret key used for securing communication between the backend and the FastAPI service
+
 
 # Firebase Authentication
 FIREBASE_PROJECT_ID=your-project-id
@@ -192,15 +194,22 @@ docker run -d \
 
 ### 2. Seed the Database
 
-Once your server is running, initialize the database:
+Once your server is running, you can initialize the database and search index.
 
-```bash
-# Seed database with sample data
-curl http://localhost:3000/seedDb
+#### Using Thunder Client or Postman
 
-# Index content for search
-curl http://localhost:3000/seedSearch
-```
+1. Open **Thunder Client** (VS Code extension) or **Postman**.  
+2. Create a new request:
+   - Method: `GET`
+   - URL: `http://localhost:3000/seedDb`
+3. Send the request → This will populate the database with sample data.  
+
+Then, for indexing content into Meilisearch:
+
+1. Create another request:
+   - Method: `GET`
+   - URL: `http://localhost:3000/seedSearch`
+2. Send the request → This will index the content for search.  
 
 ---
 
@@ -211,6 +220,8 @@ curl http://localhost:3000/seedSearch
 3. **Meilisearch** (for search functionality)
 4. **Firebase** (for authentication)
 5. **Cloudflare R2** (for media storage)
-6. **Komplex AI** (for AI-powered features)
+6. **[Komplex AI](https://github.com/salxz696969/Komplex_Ai)** (for AI-powered features)
 
 ---
+
+> KOMPLEX strives to make STEM learning more accessible, understandable, and interactive for all Cambodian students—regardless of their background or financial means.
