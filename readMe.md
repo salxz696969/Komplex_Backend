@@ -199,37 +199,45 @@ Komplex_Backend/
 ### Option 1: Local Development
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-org/komplex-backend.git
-   cd komplex-backend/Komplex_Backend
-   ```
+    ```bash
+    git clone https://github.com/your-org/komplex-backend.git
+    cd komplex-backend/Komplex_Backend
+    ```
 
 2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
 3. **Configure environment**
-   ```bash
-   cp envExample.txt .env
-   # Edit .env with your configuration
-   ```
+    ```bash
+    cp envExample.txt .env
+    # Edit .env with your configuration
+    ```
 
 4. **Start the server**
-   ```bash
-   npm run dev
-   ```
+    ```bash
+    npm run dev
+    ```
 
 ### Option 2: Docker Setup
 
-1. **Clone and build**
-   ```bash
-   git clone https://github.com/your-org/komplex-backend.git
-   cd komplex-backend/Komplex_Backend
-   docker-compose up --build
-   ```
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/your-org/komplex-backend.git
+    cd komplex-backend/Komplex_Backend
+    ```
 
----
+2. **Copy environment file**
+    ```bash
+    cp envExample.txt .env
+    # Edit .env with your configuration
+    ```
+
+3. **Build and start with Docker Compose**
+    ```bash
+    docker-compose up --build
+    ```
 
 ## 🔧 Environment Configuration
 
