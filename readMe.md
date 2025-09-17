@@ -69,7 +69,6 @@ Komplex_Backend/
     │   │   │   └── users/    # Other users' public content
     │   │   ├── routes/       # Express routers (API endpoints)
     │   │   │   ├── auth.routes.ts
-    │   │   │   ├── index.ts
     │   │   │   ├── upload.route.ts
     │   │   │   ├── feed/     # /api/feed/*
     │   │   │   ├── me/       # /api/me/*
@@ -86,100 +85,33 @@ Komplex_Backend/
     │       │   ├── auth.controller.ts
     │       │   ├── blogs.controller.ts
     │       │   ├── dashboard.controller.ts
-    │       │   ├── exercises.controller.ts
-    │       │   ├── feedbacks.controller.ts
-    │       │   ├── forum_comments.controller.ts
-    │       │   ├── forum_replies.controller.ts
-    │       │   ├── forums.controller.ts
-    │       │   ├── grades.controller.ts
-    │       │   ├── subjects.controller.ts
-    │       │   ├── users.controller.ts
-    │       │   ├── videos.controller.ts
-    │       │   └── database/ # DB admin tools
+    │       │   └── ...       # Other admin controllers
     │       └── routes/       # /api/admin/* endpoints
     │           ├── auth.route.ts
     │           ├── blogs.route.ts
-    │           ├── dashborad.route.ts
-    │           ├── database.route.ts
-    │           ├── exercises.route.ts
-    │           ├── feedbacks.route.ts
-    │           ├── followers.route.ts
-    │           ├── forum_comments.route.ts
-    │           ├── forum_replies.route.ts
-    │           ├── forums.route.ts
-    │           ├── grades.route.ts
-    │           ├── index.ts
-    │           ├── subjects.route.ts
-    │           ├── user_exercise_history.route.ts
-    │           ├── user_saved_blogs.route.ts
-    │           ├── user_saved_videos.route.ts
-    │           ├── user_video_history.route.ts
-    │           ├── users.route.ts
-    │           └── videos.route.ts
+    │           ├── dashboard.route.ts
+    │           └── ...       # Other admin routes
     ├── config/
     │   ├── meilisearchConfig.ts     # Meilisearch setup
     │   ├── swagger.ts               # Swagger/OpenAPI config
-    │   └── firebase/
-    │       └── admin.ts             # Firebase admin SDK
+    │   └── firebase/admin.ts        # Firebase admin SDK
     ├── db/
     │   ├── index.ts                 # DB connection
     │   ├── schema.ts                # Drizzle schema
-    │   ├── cloudflare/
-    │   │   ├── cloudflareConfig.ts
-    │   │   └── cloudflareFunction.ts
-    │   ├── models/                  # Table definitions
-    │   │   ├── blog_media.ts
-    │   │   ├── blogs.ts
-    │   │   ├── choices.ts
-    │   │   ├── exercises.ts
-    │   │   ├── feedback_media.ts
-    │   │   ├── feedback_status.ts
-    │   │   ├── feedbacks.ts
-    │   │   ├── followers.ts
-    │   │   ├── forum_comment_like.ts
-    │   │   ├── forum_comment_media.ts
-    │   │   ├── forum_comments.ts
-    │   │   ├── forum_likes.ts
-    │   │   ├── forum_medias.ts
-    │   │   ├── forum_replies.ts
-    │   │   ├── forum_reply_like.ts
-    │   │   ├── forum_reply_media.ts
-    │   │   ├── forums.ts
-    │   │   ├── media_type.ts
-    │   │   ├── questions.ts
-    │   │   ├── user_ai_history.ts
-    │   │   ├── user_exercise_history.ts
-    │   │   ├── user_oauth.ts
-    │   │   ├── user_question_history.ts
-    │   │   ├── user_saved_blogs.ts
-    │   │   ├── user_saved_videos.ts
-    │   │   ├── user_video_history.ts
-    │   │   ├── users.ts
-    │   │   ├── video_comment_like.ts
-    │   │   ├── video_comment_medias.ts
-    │   │   ├── video_comments.ts
-    │   │   ├── video_likes.ts
-    │   │   ├── video_replies.ts
-    │   │   ├── video_reply_like.ts
-    │   │   ├── video_reply_medias.ts
-    │   │   └── videos.ts
-    │   └── redis/
-    │       └── redisConfig.ts       # Redis connection
+    │   ├── models/...               # Table definitions
+    │   └── redis/redisConfig.ts     # Redis connection
     ├── middleware/
     │   ├── auth.ts                  # Auth middleware
     │   ├── redisLimiter.ts          # Rate limiting
     │   ├── upload.ts                # File upload logic
     │   └── uploads/
-    │       ├── images/
-    │       │   └── .gitkeep
-    │       └── videos/
-    │           └── .gitkeep
+    │       ├── images/.gitkeep      # Placeholder for git
+    │       └── videos/.gitkeep      # Placeholder for git
     ├── seed/
     │   ├── data.ts                  # Seed data
     │   ├── ddl.sql                  # SQL schema
     │   └── seedFunction.ts          # Seeding logic
-    ├── types/
-    │   └── request.ts               # TypeScript types
+    ├── types/request.ts             # TypeScript types
     └── utils/
         ├── authenticatedRequest.ts  # Auth helpers
         ├── formatter.ts             # Data formatting
